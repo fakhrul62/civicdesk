@@ -1,0 +1,268 @@
+// CivicDesk Database Schema
+// Government Complaint & Ticket Management Portal
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+}
+
+// ─────────────────────────────────────────────
+// ENUMS
+// ─────────────────────────────────────────────
+
+enum UserRole {
+  citizen
+  agent
+  supervisor
+  admin
+}
+
+enum TicketStatus {
+  submitted
+  under_review
+  in_progress
+  pending_citizen
+  resolved
+  closed
+}
+
+enum Priority {
+  critical
+  high
+  medium
+  low
+}
+
+// ─────────────────────────────────────────────
+// USERS
+// ─────────────────────────────────────────────
+
+model User {
+  id             String    @id @default(cuid())
+  email          String    @unique
+  password_hash  String
+  full_name      String
+  phone          String?
+  role           UserRole  @default(citizen)
+  avatar_url     String?
+  is_active      Boolean   @default(true)
+  created_at     DateTime  @default(now())
+  updated_at     DateTime  @updatedAt
+
+  // Relations
+  submitted_tickets  Ticket[]      @relation("CitizenTickets")
+  assigned_tickets   Ticket[]      @relation("AgentTickets")
+  sent_messages      Message[]
+  audit_entries      AuditLog[]    @relation("AuditActor")
+  notifications      Notification[]
+
+  @@index([email])
+  @@index([role])
+  @@map("users")
+}
+
+// ─────────────────────────────────────────────
+// CATEGORIES & DEPARTMENTS
+// ─────────────────────────────────────────────
+
+model Category {
+  id                String    @id @default(cuid())
+  name              String    @unique
+  department        String
+  description       String?
+  default_priority  Priority  @default(medium)
+  sla_hours         Int       @default(72)
+  is_active         Boolean   @default(true)
+  created_at        DateTime  @default(now())
+  updated_at        DateTime  @updatedAt
+
+  // Relations
+  tickets  Ticket[]
+
+  @@map("categories")
+}
+
+// ─────────────────────────────────────────────
+// TICKETS
+// ─────────────────────────────────────────────
+
+model Ticket {
+  id              String       @id @default(cuid())
+  ticket_number   String       @unique
+  title           String
+  description     String
+  status          TicketStatus @default(submitted)
+  priority        Priority     @default(medium)
+  location        String?
+  latitude        Float?
+  longitude       Float?
+  due_date        DateTime?
+
+  // Foreign keys
+  category_id     String
+  citizen_id      String
+  assigned_to     String?
+
+  created_at      DateTime     @default(now())
+  updated_at      DateTime     @updatedAt
+  resolved_at     DateTime?
+
+  // Relations
+  category        Category     @relation(fields: [category_id], references: [id])
+  citizen         User         @relation("CitizenTickets", fields: [citizen_id], references: [id])
+  assigned_agent  User?        @relation("AgentTickets", fields: [assigned_to], references: [id])
+  messages        Message[]
+  attachments     Attachment[]
+  audit_entries   AuditLog[]
+  timeline_events TimelineEvent[]
+
+  @@index([ticket_number])
+  @@index([status])
+  @@index([priority])
+  @@index([citizen_id])
+  @@index([assigned_to])
+  @@index([category_id])
+  @@index([created_at])
+  @@map("tickets")
+}
+
+// ─────────────────────────────────────────────
+// MESSAGES (Conversation Thread)
+// ─────────────────────────────────────────────
+
+model Message {
+  id           String   @id @default(cuid())
+  body         String
+  is_internal  Boolean  @default(false) // Internal notes not visible to citizen
+
+  // Foreign keys
+  ticket_id    String
+  sender_id    String
+
+  created_at   DateTime @default(now())
+
+  // Relations
+  ticket       Ticket   @relation(fields: [ticket_id], references: [id], onDelete: Cascade)
+  sender       User     @relation(fields: [sender_id], references: [id])
+
+  @@index([ticket_id])
+  @@index([sender_id])
+  @@map("messages")
+}
+
+// ─────────────────────────────────────────────
+// ATTACHMENTS (File Uploads)
+// ─────────────────────────────────────────────
+
+model Attachment {
+  id           String   @id @default(cuid())
+  file_name    String
+  file_url     String
+  file_size    Int      // bytes
+  mime_type    String
+  
+  // Foreign keys
+  ticket_id    String
+
+  created_at   DateTime @default(now())
+
+  // Relations
+  ticket       Ticket   @relation(fields: [ticket_id], references: [id], onDelete: Cascade)
+
+  @@index([ticket_id])
+  @@map("attachments")
+}
+
+// ─────────────────────────────────────────────
+// TIMELINE EVENTS (Status Changes)
+// ─────────────────────────────────────────────
+
+model TimelineEvent {
+  id           String       @id @default(cuid())
+  status       TicketStatus
+  description  String
+  actor        String       // Name stored for historical record
+
+  // Foreign keys
+  ticket_id    String
+
+  created_at   DateTime     @default(now())
+
+  // Relations
+  ticket       Ticket       @relation(fields: [ticket_id], references: [id], onDelete: Cascade)
+
+  @@index([ticket_id])
+  @@index([created_at])
+  @@map("timeline_events")
+}
+
+// ─────────────────────────────────────────────
+// AUDIT LOG (Immutable Record)
+// ─────────────────────────────────────────────
+
+model AuditLog {
+  id             String   @id @default(cuid())
+  action         String   // e.g. "Status changed", "Agent assigned"
+  field          String?  // e.g. "status", "priority", "assigned_to"
+  old_value      String?
+  new_value      String?
+  ip_address     String?
+
+  // Foreign keys
+  ticket_id      String
+  actor_id       String
+
+  created_at     DateTime @default(now())
+
+  // Relations
+  ticket         Ticket   @relation(fields: [ticket_id], references: [id], onDelete: Cascade)
+  actor          User     @relation("AuditActor", fields: [actor_id], references: [id])
+
+  // Audit logs are NEVER updated or deleted
+  @@index([ticket_id])
+  @@index([actor_id])
+  @@index([created_at])
+  @@map("audit_log")
+}
+
+// ─────────────────────────────────────────────
+// NOTIFICATIONS
+// ─────────────────────────────────────────────
+
+model Notification {
+  id           String   @id @default(cuid())
+  title        String
+  body         String
+  is_read      Boolean  @default(false)
+  link         String?  // URL to navigate to
+
+  // Foreign keys
+  user_id      String
+
+  created_at   DateTime @default(now())
+
+  // Relations
+  user         User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@index([is_read])
+  @@index([created_at])
+  @@map("notifications")
+}
+
+// ─────────────────────────────────────────────
+// SYSTEM SETTINGS (Key-Value Store)
+// ─────────────────────────────────────────────
+
+model SystemSetting {
+  id     String @id @default(cuid())
+  key    String @unique
+  value  String
+  
+  updated_at DateTime @updatedAt
+
+  @@map("system_settings")
+}
