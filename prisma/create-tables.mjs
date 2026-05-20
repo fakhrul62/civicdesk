@@ -1,8 +1,14 @@
 // Execute SQL directly against Supabase via the Management API
 // This bypasses the Prisma connection issues
 
-const SUPABASE_URL = "https://bdhjcuziepopxxyljflf.supabase.co";
-const SERVICE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJkaGpjdXppZXBvcHh4eWxqZmxmIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3OTExMzM3NywiZXhwIjoyMDk0Njg5Mzc3fQ.Q25wFVkApWk8F6EbdIWQ2cg3EJ_ddNMy06_lzR8MP0c";
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+if (!SUPABASE_URL || !SERVICE_KEY) {
+  throw new Error(
+    "Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY environment variable."
+  );
+}
 
 const SQL = `
 -- CivicDesk Schema

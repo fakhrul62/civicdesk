@@ -5,7 +5,11 @@ import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-const DATABASE_URL = "postgresql://postgres.bdhjcuziepopxxyljflf:UjCIMCrIHcZQiPvV@aws-1-ap-southeast-2.pooler.supabase.com:6543/postgres";
+const DATABASE_URL = process.env.DATABASE_URL;
+
+if (!DATABASE_URL) {
+  throw new Error("Missing DATABASE_URL environment variable.");
+}
 
 async function run() {
   console.log("🔧 Connecting to Supabase database...\n");
