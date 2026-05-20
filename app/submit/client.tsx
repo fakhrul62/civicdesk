@@ -1,0 +1,462 @@
+"use client";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import {
+  ArrowLeft,
+  ArrowRight,
+  Upload,
+  CheckCircle2,
+  MapPin,
+  FileText,
+  User,
+  ClipboardCheck,
+  X,
+  LocateFixed,
+  ExternalLink,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
+import { Navbar } from "@/components/navbar";
+import { Footer } from "@/components/footer";
+import { cn } from "@/lib/utils";
+import { createTicketFromForm } from "@/actions/tickets";
+
+const formSteps = [
+  { id: 1, title: "Category", icon: FileText },
+  { id: 2, title: "Details", icon: ClipboardCheck },
+  { id: 3, title: "Location", icon: MapPin },
+  { id: 4, title: "Contact", icon: User },
+];
+
+type Category = {
+  id: string;
+  name: string;
+  department: string;
+  description: string | null;
+  sla_hours: number;
+};
+
+type SubmitUser = {
+  full_name: string;
+  email: string;
+  phone: string | null;
+};
+
+export function SubmitClient({
+  user,
+  categories,
+}: {
+  user: SubmitUser;
+  categories: Category[];
+}) {
+  const router = useRouter();
+  const [step, setStep] = useState(1);
+  const [submitted, setSubmitted] = useState(false);
+  const [ticketNumber, setTicketNumber] = useState("");
+  const [files, setFiles] = useState<File[]>([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState("");
+
+  const [categoryId, setCategoryId] = useState("");
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [address, setAddress] = useState("");
+  const [city, setCity] = useState("Dhaka");
+  const [area, setArea] = useState("");
+  const [name, setName] = useState(user?.full_name || "");
+  const [email, setEmail] = useState(user?.email || "");
+  const [phone, setPhone] = useState(user?.phone || "");
+  const [latitude, setLatitude] = useState("");
+  const [longitude, setLongitude] = useState("");
+  const [locationLoading, setLocationLoading] = useState(false);
+
+  const selectedCategory = categories.find((c) => c.id === categoryId);
+  const location = [address, area, city].filter(Boolean).join(", ");
+  const hasCoordinates = latitude && longitude;
+  const mapSrc = hasCoordinates
+    ? `https://www.openstreetmap.org/export/embed.html?bbox=${Number(longitude) - 0.01}%2C${Number(latitude) - 0.01}%2C${Number(longitude) + 0.01}%2C${Number(latitude) + 0.01}&layer=mapnik&marker=${latitude}%2C${longitude}`
+    : "";
+
+  const nextStep = () => {
+    setError("");
+    if (step === 1 && !selectedCategory) {
+      setError("Please select a complaint category.");
+      return;
+    }
+    if (step === 2 && (title.trim().length < 10 || description.trim().length < 20)) {
+      setError("Add a title of at least 10 characters and a description of at least 20 characters.");
+      return;
+    }
+    if (step === 3 && location.trim().length < 5) {
+      setError("Please provide a usable address or area.");
+      return;
+    }
+    setStep(step + 1);
+  };
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const selected = Array.from(event.target.files || []);
+    setFiles((prev) => [...prev, ...selected].slice(0, 5));
+    event.target.value = "";
+  };
+
+  const handleUseCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      setError("Your browser does not support location detection.");
+      return;
+    }
+
+    setError("");
+    setLocationLoading(true);
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setLatitude(position.coords.latitude.toFixed(6));
+        setLongitude(position.coords.longitude.toFixed(6));
+        setLocationLoading(false);
+      },
+      () => {
+        setError("Could not read your current location. You can enter the address manually.");
+        setLocationLoading(false);
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  };
+
+  const handleSubmit = async () => {
+    setError("");
+    setIsSubmitting(true);
+
+    if (!selectedCategory) {
+      setError("Please select a valid category.");
+      setIsSubmitting(false);
+      return;
+    }
+
+    const formData = new FormData();
+    formData.set("category_id", selectedCategory.id);
+    formData.set("title", title);
+    formData.set("description", description);
+    formData.set("location", location);
+    if (latitude) formData.set("latitude", latitude);
+    if (longitude) formData.set("longitude", longitude);
+    files.forEach((file) => formData.append("attachments", file));
+
+    const result = await createTicketFromForm(formData);
+
+    if (result.error) {
+      setError(result.error);
+      setIsSubmitting(false);
+    } else if (result.success && result.ticketNumber) {
+      setTicketNumber(result.ticketNumber);
+      setSubmitted(true);
+      setIsSubmitting(false);
+    }
+  };
+
+  if (submitted) {
+    return (
+      <div className="flex min-h-screen flex-col">
+        <Navbar />
+        <main className="flex flex-1 items-center justify-center p-4">
+          <Card className="mx-auto w-full max-w-md border text-center">
+            <CardContent className="flex flex-col items-center gap-4 p-8">
+              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
+                <CheckCircle2 className="h-8 w-8 text-primary" />
+              </div>
+              <h2 className="text-2xl font-bold">Complaint Submitted</h2>
+              <p className="text-sm text-muted-foreground">
+                Your complaint has been registered. Use this ticket ID to track its progress.
+              </p>
+              <div className="w-full rounded-lg border bg-muted/50 p-4">
+                <p className="text-xs text-muted-foreground">Ticket ID</p>
+                <p className="mt-1 text-2xl font-bold tracking-wider text-primary">
+                  {ticketNumber}
+                </p>
+              </div>
+              <div className="flex w-full flex-col gap-2 sm:flex-row">
+                <Button className="flex-1" onClick={() => router.push(`/track?id=${ticketNumber}`)}>
+                  Track Complaint
+                </Button>
+                <Button variant="outline" className="flex-1" onClick={() => router.push("/dashboard")}>
+                  Dashboard
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex min-h-screen flex-col">
+      <Navbar />
+      <main className="flex-1 py-8 sm:py-12">
+        <div className="mx-auto max-w-2xl px-4 sm:px-6">
+          <div className="mb-8">
+            <h1 className="text-2xl font-bold tracking-tight">Submit a Complaint</h1>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Describe the civic issue and attach evidence so the right team can act.
+            </p>
+          </div>
+
+          <div className="mb-8">
+            <div className="flex items-center justify-between">
+              {formSteps.map((s, i) => (
+                <div key={s.id} className="flex flex-1 items-center">
+                  <div className="flex flex-col items-center gap-1.5">
+                    <div
+                      className={cn(
+                        "flex h-9 w-9 items-center justify-center rounded-full border-2 transition-colors",
+                        step > s.id
+                          ? "border-primary bg-primary text-primary-foreground"
+                          : step === s.id
+                            ? "border-primary bg-primary/10 text-primary"
+                            : "border-muted-foreground/25 text-muted-foreground"
+                      )}
+                    >
+                      {step > s.id ? <CheckCircle2 className="h-4 w-4" /> : <s.icon className="h-4 w-4" />}
+                    </div>
+                    <span className={cn("text-xs font-medium", step >= s.id ? "text-foreground" : "text-muted-foreground")}>
+                      {s.title}
+                    </span>
+                  </div>
+                  {i < formSteps.length - 1 && (
+                    <div className={cn("mx-2 h-px flex-1", step > s.id ? "bg-primary" : "bg-border")} />
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <Card className="border">
+            <CardHeader>
+              <CardTitle className="text-lg">{formSteps[step - 1].title}</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {step === 1 && (
+                <>
+                  <div className="space-y-2">
+                    <Label htmlFor="category">Select Category <span className="text-destructive">*</span></Label>
+                    <Select value={categoryId} onValueChange={setCategoryId}>
+                      <SelectTrigger id="category" className="w-full">
+                        <SelectValue placeholder="Choose a category" />
+                      </SelectTrigger>
+                      <SelectContent align="start" className="w-[min(90vw,36rem)]">
+                        {categories.map((cat) => (
+                          <SelectItem key={cat.id} value={cat.id}>
+                            <span className="flex flex-col items-start gap-0.5">
+                              <span className="font-medium">{cat.name}</span>
+                              <span className="text-xs text-muted-foreground">{cat.department} · {cat.sla_hours}h SLA</span>
+                            </span>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {selectedCategory && (
+                    <div className="rounded-lg border bg-muted/50 p-3 text-sm">
+                      <p className="font-medium">{selectedCategory.name}</p>
+                      <p className="mt-0.5 text-muted-foreground">{selectedCategory.description || selectedCategory.department}</p>
+                      <p className="mt-2 text-xs text-muted-foreground">
+                        Routed to {selectedCategory.department} · target response {selectedCategory.sla_hours} hours
+                      </p>
+                    </div>
+                  )}
+                </>
+              )}
+
+              {step === 2 && (
+                <>
+                  <div className="space-y-2">
+                    <Label htmlFor="title">Title <span className="text-destructive">*</span></Label>
+                    <Input id="title" placeholder="Brief summary of your complaint" value={title} onChange={(e) => setTitle(e.target.value)} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="description">Description <span className="text-destructive">*</span></Label>
+                    <Textarea
+                      id="description"
+                      placeholder="Include what happened, when it started, how it affects people, and any safety risk."
+                      rows={5}
+                      value={description}
+                      onChange={(e) => setDescription(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Attachments</Label>
+                    <label className="block cursor-pointer rounded-lg border-2 border-dashed p-6 text-center transition-colors hover:bg-muted/40">
+                      <Upload className="mx-auto h-8 w-8 text-muted-foreground" />
+                      <p className="mt-2 text-sm text-muted-foreground">Upload photos or PDFs that show the issue</p>
+                      <span className="mt-3 inline-flex h-8 items-center rounded-md border px-3 text-sm font-medium">
+                        Choose Files
+                      </span>
+                      <input type="file" multiple accept="image/*,.pdf,application/pdf" className="sr-only" onChange={handleFileChange} />
+                    </label>
+                    {files.length > 0 && (
+                      <div className="flex flex-wrap gap-2">
+                        {files.map((file, i) => (
+                          <Badge key={`${file.name}-${i}`} variant="secondary" className="gap-1.5 pr-1">
+                            <span className="max-w-[14rem] truncate">{file.name}</span>
+                            <button
+                              type="button"
+                              onClick={() => setFiles((prev) => prev.filter((_, idx) => idx !== i))}
+                              className="ml-1 rounded-full p-0.5 hover:bg-muted"
+                              aria-label={`Remove ${file.name}`}
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
+
+              {step === 3 && (
+                <>
+                  <div className="space-y-2">
+                    <Label htmlFor="address">Street Address <span className="text-destructive">*</span></Label>
+                    <Input id="address" placeholder="House/building, road, landmark" value={address} onChange={(e) => setAddress(e.target.value)} />
+                  </div>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="area">Area / Neighborhood</Label>
+                      <Input id="area" placeholder="Dhanmondi, Mirpur, Uttara Sector 7" value={area} onChange={(e) => setArea(e.target.value)} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="city">City</Label>
+                      <Input id="city" placeholder="Dhaka" value={city} onChange={(e) => setCity(e.target.value)} />
+                    </div>
+                  </div>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="latitude">Latitude</Label>
+                      <Input id="latitude" inputMode="decimal" placeholder="23.810331" value={latitude} onChange={(e) => setLatitude(e.target.value)} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="longitude">Longitude</Label>
+                      <Input id="longitude" inputMode="decimal" placeholder="90.412521" value={longitude} onChange={(e) => setLongitude(e.target.value)} />
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <Button type="button" variant="outline" size="sm" className="gap-2" onClick={handleUseCurrentLocation} disabled={locationLoading}>
+                      <LocateFixed className="h-4 w-4" />
+                      {locationLoading ? "Reading location..." : "Use Current Location"}
+                    </Button>
+                    {hasCoordinates && (
+                      <Button type="button" variant="ghost" size="sm" asChild className="gap-2">
+                        <a href={`https://www.openstreetmap.org/?mlat=${latitude}&mlon=${longitude}#map=17/${latitude}/${longitude}`} target="_blank" rel="noreferrer">
+                          <ExternalLink className="h-4 w-4" />
+                          Open Map
+                        </a>
+                      </Button>
+                    )}
+                  </div>
+                  {hasCoordinates && (
+                    <div className="overflow-hidden rounded-lg border">
+                      <iframe title="Selected complaint location" src={mapSrc} className="h-56 w-full" loading="lazy" />
+                    </div>
+                  )}
+                  <div className="rounded-lg border bg-muted/50 p-4">
+                    <div className="flex items-start gap-3">
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-primary/10">
+                        <MapPin className="h-4 w-4 text-primary" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium">Location preview</p>
+                        <p className="mt-1 text-sm text-muted-foreground">{location || "House 12, Road 7, Uttara Sector 7, Dhaka"}</p>
+                        <p className="mt-2 text-xs text-muted-foreground">The department will use this address and coordinates for field routing.</p>
+                      </div>
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {step === 4 && (
+                <>
+                  <div className="space-y-2">
+                    <Label htmlFor="name">Full Name</Label>
+                    <Input id="name" value={name} onChange={(e) => setName(e.target.value)} disabled />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="email">Email Address</Label>
+                    <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} disabled />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="phone">Phone Number</Label>
+                    <Input id="phone" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} disabled />
+                  </div>
+                  <div className="mt-4 space-y-2 rounded-lg border bg-muted/50 p-4">
+                    <h4 className="text-sm font-medium">Review Your Complaint</h4>
+                    <div className="grid gap-1 text-sm">
+                      <div className="flex justify-between gap-4">
+                        <span className="text-muted-foreground">Category</span>
+                        <span className="text-right font-medium">{selectedCategory?.name || "-"}</span>
+                      </div>
+                      <div className="flex justify-between gap-4">
+                        <span className="text-muted-foreground">Title</span>
+                        <span className="max-w-[260px] truncate text-right font-medium">{title || "-"}</span>
+                      </div>
+                      <div className="flex justify-between gap-4">
+                        <span className="text-muted-foreground">Location</span>
+                        <span className="max-w-[260px] truncate text-right font-medium">{location || "-"}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Attachments</span>
+                        <span className="font-medium">{files.length} files</span>
+                      </div>
+                    </div>
+                  </div>
+                </>
+              )}
+            </CardContent>
+          </Card>
+
+          <div className="mt-6 flex items-center justify-between gap-4">
+            <Button variant="outline" onClick={() => (step === 1 ? router.push("/") : setStep(step - 1))} className="gap-1.5">
+              <ArrowLeft className="h-4 w-4" />
+              {step === 1 ? "Cancel" : "Back"}
+            </Button>
+
+            {step < 4 ? (
+              <div className="flex flex-col items-end gap-2">
+                {error && <p className="max-w-[18rem] text-right text-sm text-destructive">{error}</p>}
+                <Button onClick={nextStep} className="gap-1.5">
+                  Next
+                  <ArrowRight className="h-4 w-4" />
+                </Button>
+              </div>
+            ) : (
+              <div className="flex flex-col items-end gap-2">
+                {error && <p className="max-w-[18rem] text-right text-sm text-destructive">{error}</p>}
+                <Button onClick={handleSubmit} className="gap-1.5" disabled={isSubmitting}>
+                  {isSubmitting ? (
+                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                  ) : (
+                    <CheckCircle2 className="h-4 w-4" />
+                  )}
+                  {isSubmitting ? "Submitting..." : "Submit Complaint"}
+                </Button>
+              </div>
+            )}
+          </div>
+        </div>
+      </main>
+      <Footer />
+    </div>
+  );
+}

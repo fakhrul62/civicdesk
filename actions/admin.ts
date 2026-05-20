@@ -123,6 +123,59 @@ export async function getAgentStats() {
   });
 }
 
+export async function getUsersForAdmin() {
+  return prisma.user.findMany({
+    orderBy: [{ role: "asc" }, { created_at: "desc" }],
+    select: {
+      id: true,
+      full_name: true,
+      email: true,
+      phone: true,
+      role: true,
+      is_active: true,
+      created_at: true,
+      assigned_tickets: {
+        select: { status: true },
+      },
+      submitted_tickets: {
+        select: { status: true },
+      },
+    },
+  });
+}
+
+export async function updateUserRole(data: {
+  userId: string;
+  role: "citizen" | "agent" | "supervisor" | "admin";
+  is_active: boolean;
+}) {
+  const supabase = await createClient();
+  const { data: { user: authUser } } = await supabase.auth.getUser();
+
+  if (!authUser) return { error: "Unauthorized" };
+
+  const currentUser = await prisma.user.findUnique({
+    where: { id: authUser.id },
+    select: { role: true },
+  });
+
+  if (currentUser?.role !== "admin") {
+    return { error: "Only super admins can manage users" };
+  }
+
+  await prisma.user.update({
+    where: { id: data.userId },
+    data: {
+      role: data.role,
+      is_active: data.is_active,
+    },
+  });
+
+  revalidatePath("/admin/agents");
+  revalidatePath("/admin/tickets");
+  return { success: true };
+}
+
 // ─────────────────────────────────────────────
 // ANALYTICS DATA
 // ─────────────────────────────────────────────

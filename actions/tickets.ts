@@ -2,6 +2,7 @@
 
 import { prisma } from "@/lib/prisma";
 import { createClient } from "@/lib/supabase/server";
+import { createClient as createSupabaseAdminClient } from "@supabase/supabase-js";
 import { getSubmissionLimiter } from "@/lib/redis";
 import {
   createTicketSchema,
@@ -22,6 +23,62 @@ import {
 } from "@/lib/email";
 import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
+
+const ATTACHMENT_BUCKET = "ticket-attachments";
+const MAX_ATTACHMENTS = 5;
+const MAX_ATTACHMENT_SIZE = 5 * 1024 * 1024;
+const ALLOWED_ATTACHMENT_TYPES = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/gif",
+  "application/pdf",
+]);
+
+function createStorageAdmin() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!url || !key) {
+    throw new Error("Missing Supabase storage environment variables.");
+  }
+
+  return createSupabaseAdminClient(url, key, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+}
+
+async function ensureAttachmentBucket() {
+  const supabase = createStorageAdmin();
+  const { data: buckets, error: listError } = await supabase.storage.listBuckets();
+
+  if (listError) {
+    throw listError;
+  }
+
+  if (!buckets?.some((bucket) => bucket.name === ATTACHMENT_BUCKET)) {
+    const { error } = await supabase.storage.createBucket(ATTACHMENT_BUCKET, {
+      public: true,
+      fileSizeLimit: MAX_ATTACHMENT_SIZE,
+      allowedMimeTypes: Array.from(ALLOWED_ATTACHMENT_TYPES),
+    });
+
+    if (error) {
+      throw error;
+    }
+  }
+
+  return supabase;
+}
+
+function cleanFileName(name: string) {
+  return name.replace(/[^a-zA-Z0-9._-]/g, "-").replace(/-+/g, "-").slice(0, 100);
+}
+
+function formString(formData: FormData, key: string) {
+  const value = formData.get(key);
+  return typeof value === "string" ? value.trim() : "";
+}
 
 // ─────────────────────────────────────────────
 // CREATE TICKET
@@ -135,6 +192,185 @@ export async function createTicket(input: CreateTicketInput) {
     };
   } catch (err: any) {
     console.error("Create ticket error:", err);
+    return { error: "Failed to submit complaint. Please try again." };
+  }
+}
+
+export async function createTicketFromForm(formData: FormData) {
+  const categoryId = formString(formData, "category_id");
+  const title = formString(formData, "title");
+  const description = formString(formData, "description");
+  const location = formString(formData, "location");
+  const latitudeValue = formString(formData, "latitude");
+  const longitudeValue = formString(formData, "longitude");
+  const latitude = latitudeValue ? Number(latitudeValue) : undefined;
+  const longitude = longitudeValue ? Number(longitudeValue) : undefined;
+
+  const parsed = createTicketSchema.safeParse({
+    category_id: categoryId,
+    title,
+    description,
+    location,
+    latitude: Number.isFinite(latitude) ? latitude : undefined,
+    longitude: Number.isFinite(longitude) ? longitude : undefined,
+  });
+
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0].message };
+  }
+
+  const files = formData
+    .getAll("attachments")
+    .filter((value): value is File => value instanceof File && value.size > 0);
+
+  if (files.length > MAX_ATTACHMENTS) {
+    return { error: `You can upload up to ${MAX_ATTACHMENTS} files.` };
+  }
+
+  for (const file of files) {
+    if (file.size > MAX_ATTACHMENT_SIZE) {
+      return { error: `${file.name} is larger than 5MB.` };
+    }
+
+    if (!ALLOWED_ATTACHMENT_TYPES.has(file.type)) {
+      return { error: `${file.name} must be an image or PDF file.` };
+    }
+  }
+
+  try {
+    const headersList = await headers();
+    const ip = headersList.get("x-forwarded-for") || "127.0.0.1";
+    const limiter = getSubmissionLimiter();
+    const { success: allowed } = await limiter.limit(ip);
+
+    if (!allowed) {
+      return { error: "You've submitted too many complaints. Please try again in an hour." };
+    }
+
+    const supabase = await createClient();
+    const { data: { user: authUser } } = await supabase.auth.getUser();
+
+    if (!authUser) {
+      return { error: "You must be logged in to submit a complaint" };
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: authUser.id },
+      select: { id: true, full_name: true, email: true },
+    });
+
+    if (!user) {
+      return { error: "Your user profile is not ready. Please sign out and sign in again." };
+    }
+
+    const category = await prisma.category.findUnique({
+      where: { id: parsed.data.category_id },
+    });
+
+    if (!category) {
+      return { error: "Invalid category selected" };
+    }
+
+    const ticketNumber = await generateTicketNumber();
+    const priority = parsed.data.priority || category.default_priority;
+    const dueDate = calculateDueDate(category.sla_hours);
+
+    const ticket = await prisma.$transaction(async (tx) => {
+      const newTicket = await tx.ticket.create({
+        data: {
+          ticket_number: ticketNumber,
+          title: parsed.data.title,
+          description: parsed.data.description,
+          category_id: parsed.data.category_id,
+          citizen_id: authUser.id,
+          priority,
+          location: parsed.data.location,
+          latitude: parsed.data.latitude,
+          longitude: parsed.data.longitude,
+          due_date: dueDate,
+          status: "submitted",
+        },
+        include: {
+          category: true,
+          citizen: true,
+        },
+      });
+
+      await tx.timelineEvent.create({
+        data: {
+          ticket_id: newTicket.id,
+          status: "submitted",
+          description: "Complaint submitted",
+          actor: newTicket.citizen.full_name,
+        },
+      });
+
+      await tx.auditLog.create({
+        data: {
+          ticket_id: newTicket.id,
+          actor_id: authUser.id,
+          action: "Ticket created",
+          field: "status",
+          new_value: "Submitted",
+          ip_address: ip,
+        },
+      });
+
+      return newTicket;
+    });
+
+    if (files.length > 0) {
+      const storage = await ensureAttachmentBucket();
+      const uploaded = [];
+
+      for (const file of files) {
+        const safeName = cleanFileName(file.name || "attachment");
+        const path = `${ticket.id}/${crypto.randomUUID()}-${safeName}`;
+        const body = Buffer.from(await file.arrayBuffer());
+        const { error } = await storage.storage
+          .from(ATTACHMENT_BUCKET)
+          .upload(path, body, {
+            contentType: file.type,
+            upsert: false,
+          });
+
+        if (error) {
+          throw error;
+        }
+
+        const { data } = storage.storage.from(ATTACHMENT_BUCKET).getPublicUrl(path);
+        uploaded.push({
+          ticket_id: ticket.id,
+          file_name: file.name || safeName,
+          file_url: data.publicUrl,
+          file_size: file.size,
+          mime_type: file.type,
+        });
+      }
+
+      await prisma.attachment.createMany({ data: uploaded });
+    }
+
+    sendTicketConfirmation({
+      ticketNumber: ticket.ticket_number,
+      citizenName: ticket.citizen.full_name,
+      citizenEmail: ticket.citizen.email,
+      title: ticket.title,
+      category: ticket.category.name,
+    }).catch((err) => console.error("Email send error:", err));
+
+    revalidatePath("/dashboard");
+    revalidatePath("/track");
+    revalidatePath("/admin");
+    revalidatePath("/admin/tickets");
+
+    return {
+      success: true,
+      ticketNumber: ticket.ticket_number,
+      ticketId: ticket.id,
+    };
+  } catch (err: unknown) {
+    console.error("Create ticket with attachments error:", err);
     return { error: "Failed to submit complaint. Please try again." };
   }
 }
@@ -519,8 +755,9 @@ export async function getTicketByNumber(ticketNumber: string) {
   return prisma.ticket.findUnique({
     where: { ticket_number: ticketNumber },
     include: {
-      category: { select: { name: true } },
+      category: { select: { name: true, department: true } },
       assigned_agent: { select: { full_name: true } },
+      attachments: true,
       timeline_events: { orderBy: { created_at: "asc" } },
       messages: {
         where: { is_internal: false }, // Only public messages
@@ -530,5 +767,26 @@ export async function getTicketByNumber(ticketNumber: string) {
         },
       },
     },
+  });
+}
+
+// ─────────────────────────────────────────────
+// GET TICKET AUDIT LOGS
+// ─────────────────────────────────────────────
+export async function getTicketAuditLogs(ticketId: string) {
+  return prisma.auditLog.findMany({
+    where: { ticket_id: ticketId },
+    include: { actor: { select: { full_name: true } } },
+    orderBy: { created_at: "desc" },
+  });
+}
+
+// ─────────────────────────────────────────────
+// GET AGENTS
+// ─────────────────────────────────────────────
+export async function getAgents() {
+  return prisma.user.findMany({
+    where: { role: { in: ["agent", "supervisor"] }, is_active: true },
+    select: { id: true, full_name: true },
   });
 }
