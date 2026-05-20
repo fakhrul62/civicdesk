@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   LayoutDashboard,
   Ticket,
@@ -21,11 +21,12 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 
 const navItems = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard, exact: true },
-  { href: "/admin/tickets", label: "Tickets", icon: Ticket, badge: "124" },
+  { href: "/admin/tickets", label: "Tickets", icon: Ticket },
   { href: "/admin/agents", label: "Agents", icon: Users },
   { href: "/admin/analytics", label: "Analytics", icon: BarChart3 },
   { href: "/admin/audit-log", label: "Audit Log", icon: ScrollText },
@@ -34,6 +35,40 @@ const navItems = [
 
 function SidebarContent({ onNavClick }: { onNavClick?: () => void }) {
   const pathname = usePathname();
+  const [admin, setAdmin] = useState({ name: "Administrator", email: "" });
+
+  useEffect(() => {
+    let mounted = true;
+
+    async function loadAdmin() {
+      const supabase = createClient();
+      const { data } = await supabase.auth.getUser();
+      const user = data.user;
+
+      if (!mounted || !user) return;
+
+      setAdmin({
+        name:
+          user.user_metadata?.full_name ||
+          user.email?.split("@")[0] ||
+          "Administrator",
+        email: user.email || "",
+      });
+    }
+
+    loadAdmin();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const initials = admin.name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join("") || "AD";
 
   return (
     <div className="flex h-full flex-col">
@@ -70,17 +105,6 @@ function SidebarContent({ onNavClick }: { onNavClick?: () => void }) {
                 >
                   <item.icon className="h-4 w-4" />
                   {item.label}
-                  {item.badge && (
-                    <Badge
-                      variant="secondary"
-                      className={cn(
-                        "ml-auto h-5 px-1.5 text-[10px]",
-                        isActive && "bg-primary/20 text-primary"
-                      )}
-                    >
-                      {item.badge}
-                    </Badge>
-                  )}
                 </div>
               </Link>
             );
@@ -93,12 +117,14 @@ function SidebarContent({ onNavClick }: { onNavClick?: () => void }) {
         <div className="flex items-center gap-2 rounded-md px-2 py-1.5">
           <Avatar className="h-8 w-8">
             <AvatarFallback className="text-xs bg-primary/10 text-primary">
-              SR
+              {initials}
             </AvatarFallback>
           </Avatar>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium truncate">Shahida Rahman</p>
-            <p className="text-[10px] text-muted-foreground">Administrator</p>
+            <p className="text-sm font-medium truncate">{admin.name}</p>
+            <p className="text-[10px] text-muted-foreground truncate">
+              {admin.email || "Administrator"}
+            </p>
           </div>
           <Link href="/">
             <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0">
@@ -147,9 +173,6 @@ export default function AdminLayout({
           <div className="flex items-center gap-2">
             <Button variant="ghost" size="icon" className="relative h-9 w-9">
               <Bell className="h-4 w-4" />
-              <span className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-[10px] font-bold text-white">
-                3
-              </span>
             </Button>
             <ThemeToggle />
           </div>

@@ -19,6 +19,8 @@ export async function getDashboardStats() {
         resolvedTickets,
         overdueTickets,
         recentTickets,
+        statusDistribution,
+        resolvedWithTimes,
       ] = await Promise.all([
         prisma.ticket.count(),
         prisma.ticket.count({
@@ -44,7 +46,37 @@ export async function getDashboardStats() {
             assigned_agent: { select: { full_name: true } },
           },
         }),
+        prisma.ticket.groupBy({
+          by: ["status"],
+          _count: { id: true },
+        }),
+        prisma.ticket.findMany({
+          where: { resolved_at: { not: null } },
+          select: { created_at: true, resolved_at: true, due_date: true },
+        }),
       ]);
+
+      const avgResolutionHours =
+        resolvedWithTimes.length > 0
+          ? Math.round(
+              resolvedWithTimes.reduce((total, ticket) => {
+                return (
+                  total +
+                  (ticket.resolved_at!.getTime() - ticket.created_at.getTime()) /
+                    (1000 * 60 * 60)
+                );
+              }, 0) / resolvedWithTimes.length
+            )
+          : 0;
+
+      const resolvedWithDueDates = resolvedWithTimes.filter((ticket) => ticket.due_date);
+      const resolvedWithinSla = resolvedWithDueDates.filter(
+        (ticket) => ticket.resolved_at! <= ticket.due_date!
+      ).length;
+      const slaCompliance =
+        resolvedWithDueDates.length > 0
+          ? Math.round((resolvedWithinSla / resolvedWithDueDates.length) * 100)
+          : 0;
 
       return {
         totalTickets,
@@ -52,6 +84,12 @@ export async function getDashboardStats() {
         resolvedTickets,
         overdueTickets,
         recentTickets,
+        statusDistribution: statusDistribution.map((item) => ({
+          status: item.status,
+          count: item._count.id,
+        })),
+        avgResolutionHours,
+        slaCompliance,
       };
     },
     30 // Cache for 30 seconds

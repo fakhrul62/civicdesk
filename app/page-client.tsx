@@ -11,7 +11,6 @@ import {
   ArrowRight,
   Shield,
   Users,
-  BarChart3,
   Landmark,
   MessageSquare,
   Zap,
@@ -20,13 +19,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-
-const stats = [
-  { label: "Complaints Resolved", value: "12,847", icon: CheckCircle2 },
-  { label: "Avg. Resolution Time", value: "48 hrs", icon: Clock },
-  { label: "Active Citizens", value: "34,200+", icon: Users },
-  { label: "SLA Compliance", value: "87%", icon: BarChart3 },
-];
 
 const steps = [
   {
@@ -55,18 +47,37 @@ const steps = [
   },
 ];
 
-const categories = [
-  { name: "Road & Infrastructure", count: 2341, color: "bg-primary/10 text-primary" },
-  { name: "Water Supply", count: 1892, color: "bg-blue-500/10 text-blue-600 dark:text-blue-400" },
-  { name: "Electricity", count: 1654, color: "bg-amber-500/10 text-amber-600 dark:text-amber-400" },
-  { name: "Waste Management", count: 1423, color: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" },
-  { name: "Public Safety", count: 987, color: "bg-red-500/10 text-red-600 dark:text-red-400" },
-  { name: "Parks & Recreation", count: 756, color: "bg-violet-500/10 text-violet-600 dark:text-violet-400" },
+type HomeClientProps = {
+  stats: {
+    totalTickets: number;
+    resolvedTickets: number;
+    activeCitizens: number;
+    avgResolutionHours: number;
+  };
+  categories: Array<{
+    name: string;
+    count: number;
+  }>;
+};
+
+const categoryColors = [
+  "bg-primary/10 text-primary",
+  "bg-blue-500/10 text-blue-600 dark:text-blue-400",
+  "bg-amber-500/10 text-amber-600 dark:text-amber-400",
+  "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+  "bg-red-500/10 text-red-600 dark:text-red-400",
+  "bg-violet-500/10 text-violet-600 dark:text-violet-400",
 ];
 
-export function HomeClient() {
+export function HomeClient({ stats, categories }: HomeClientProps) {
   const router = useRouter();
   const [ticketId, setTicketId] = useState("");
+  const homepageStats = [
+    { label: "Complaints Submitted", value: stats.totalTickets.toLocaleString(), icon: FileText },
+    { label: "Complaints Resolved", value: stats.resolvedTickets.toLocaleString(), icon: CheckCircle2 },
+    { label: "Active Citizens", value: stats.activeCitizens.toLocaleString(), icon: Users },
+    { label: "Avg. Resolution Time", value: `${stats.avgResolutionHours} hrs`, icon: Clock },
+  ];
 
   const handleTrack = () => {
     if (ticketId.trim()) {
@@ -126,7 +137,7 @@ export function HomeClient() {
                   <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
                   <Input
                     type="text"
-                    placeholder="Enter ticket ID (e.g. CVD-2026-0001)"
+                    placeholder="Enter your ticket ID"
                     value={ticketId}
                     onChange={(e) => setTicketId(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && handleTrack()}
@@ -148,7 +159,7 @@ export function HomeClient() {
       {/* ==================== STATS BAR ==================== */}
       <section className="border-b">
         <div className="mx-auto grid max-w-6xl grid-cols-2 divide-x divide-y sm:divide-y-0 lg:grid-cols-4">
-          {stats.map((stat) => (
+          {homepageStats.map((stat) => (
             <div key={stat.label} className="flex items-center gap-3 px-4 py-6 sm:px-6">
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
                 <stat.icon className="h-5 w-5 text-primary" />
@@ -223,7 +234,7 @@ export function HomeClient() {
           </div>
 
           <div className="mt-12 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {categories.map((cat) => (
+            {categories.map((cat, index) => (
               <Card
                 key={cat.name}
                 className="group cursor-pointer border transition-colors hover:border-primary/30"
@@ -231,7 +242,9 @@ export function HomeClient() {
                 <CardContent className="flex items-center justify-between p-4">
                   <div className="flex items-center gap-3">
                     <div
-                      className={`flex h-9 w-9 items-center justify-center rounded-lg ${cat.color}`}
+                      className={`flex h-9 w-9 items-center justify-center rounded-lg ${
+                        categoryColors[index % categoryColors.length]
+                      }`}
                     >
                       <FileText className="h-4 w-4" />
                     </div>

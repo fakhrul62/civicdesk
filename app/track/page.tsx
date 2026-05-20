@@ -83,7 +83,7 @@ export default async function TrackPage({
               <Input
                 name="id"
                 type="text"
-                placeholder="Enter ticket ID, e.g. CVD-2026-0001"
+                placeholder="Enter your ticket ID"
                 defaultValue={ticketNumber}
                 className="border-0 bg-transparent p-0 text-sm shadow-none focus-visible:ring-0"
               />

@@ -23,57 +23,20 @@ import {
 } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
 
-const summaryCards = [
-  {
-    label: "Total Tickets",
-    value: "847",
-    change: "+12%",
-    icon: Ticket,
-    color: "text-primary",
-    bg: "bg-primary/10",
-  },
-  {
-    label: "Open Tickets",
-    value: "124",
-    change: "-3%",
-    icon: Clock,
-    color: "text-status-under-review",
-    bg: "bg-status-under-review/10",
-  },
-  {
-    label: "Resolved",
-    value: "598",
-    change: "+18%",
-    icon: CheckCircle2,
-    color: "text-status-resolved",
-    bg: "bg-status-resolved/10",
-  },
-  {
-    label: "Overdue",
-    value: "36",
-    change: "+5%",
-    icon: AlertTriangle,
-    color: "text-priority-critical",
-    bg: "bg-priority-critical/10",
-  },
-];
-
-// Removed mock recent tickets
-
-const statusDistribution = [
-  { label: "Submitted", count: 42, percentage: 34, color: "bg-status-submitted" },
-  { label: "Under Review", count: 28, percentage: 23, color: "bg-status-under-review" },
-  { label: "In Progress", count: 89, percentage: 72, color: "bg-status-in-progress" },
-  { label: "Pending", count: 15, percentage: 12, color: "bg-status-pending" },
-  { label: "Resolved", count: 598, percentage: 100, color: "bg-status-resolved" },
-];
+const statusColors: Record<string, string> = {
+  submitted: "bg-status-submitted",
+  under_review: "bg-status-under-review",
+  in_progress: "bg-status-in-progress",
+  pending_citizen: "bg-status-pending",
+  resolved: "bg-status-resolved",
+  closed: "bg-status-closed",
+};
 
 export function AdminDashboardClient({ stats, agentStats }: { stats: any, agentStats: any[] }) {
   const summaryCards = [
     {
       label: "Total Tickets",
       value: stats.totalTickets.toString(),
-      change: "+12%",
       icon: Ticket,
       color: "text-primary",
       bg: "bg-primary/10",
@@ -81,7 +44,6 @@ export function AdminDashboardClient({ stats, agentStats }: { stats: any, agentS
     {
       label: "Open Tickets",
       value: stats.openTickets.toString(),
-      change: "-3%",
       icon: Clock,
       color: "text-status-under-review",
       bg: "bg-status-under-review/10",
@@ -89,7 +51,6 @@ export function AdminDashboardClient({ stats, agentStats }: { stats: any, agentS
     {
       label: "Resolved",
       value: stats.resolvedTickets.toString(),
-      change: "+18%",
       icon: CheckCircle2,
       color: "text-status-resolved",
       bg: "bg-status-resolved/10",
@@ -97,12 +58,15 @@ export function AdminDashboardClient({ stats, agentStats }: { stats: any, agentS
     {
       label: "Overdue",
       value: stats.overdueTickets.toString(),
-      change: "+5%",
       icon: AlertTriangle,
       color: "text-priority-critical",
       bg: "bg-priority-critical/10",
     },
   ];
+  const maxStatusCount = Math.max(
+    1,
+    ...stats.statusDistribution.map((item: any) => item.count)
+  );
 
   return (
     <div className="p-4 sm:p-6 space-y-6">
@@ -123,17 +87,6 @@ export function AdminDashboardClient({ stats, agentStats }: { stats: any, agentS
                 <div className={cn("flex h-9 w-9 items-center justify-center rounded-lg", card.bg)}>
                   <card.icon className={cn("h-4 w-4", card.color)} />
                 </div>
-                <Badge
-                  variant="secondary"
-                  className={cn(
-                    "text-[10px] font-medium",
-                    card.change.startsWith("+") && card.label !== "Overdue"
-                      ? "text-status-resolved"
-                      : "text-priority-critical"
-                  )}
-                >
-                  {card.change}
-                </Badge>
               </div>
               <p className="mt-3 text-2xl font-bold">{card.value}</p>
               <p className="text-xs text-muted-foreground">{card.label}</p>
@@ -156,6 +109,11 @@ export function AdminDashboardClient({ stats, agentStats }: { stats: any, agentS
           </CardHeader>
           <CardContent className="p-0">
             <div className="divide-y">
+              {stats.recentTickets.length === 0 && (
+                <div className="p-4 text-sm text-muted-foreground">
+                  No tickets have been submitted yet.
+                </div>
+              )}
               {stats.recentTickets.map((ticket: any) => (
                 <Link
                   key={ticket.id}
@@ -202,16 +160,19 @@ export function AdminDashboardClient({ stats, agentStats }: { stats: any, agentS
               <CardTitle className="text-base">Status Breakdown</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              {statusDistribution.map((item) => (
-                <div key={item.label} className="space-y-1">
+              {stats.statusDistribution.length === 0 && (
+                <p className="text-sm text-muted-foreground">No ticket data yet.</p>
+              )}
+              {stats.statusDistribution.map((item: any) => (
+                <div key={item.status} className="space-y-1">
                   <div className="flex items-center justify-between text-xs">
-                    <span className="text-muted-foreground">{item.label}</span>
+                    <span className="text-muted-foreground">{getStatusLabel(item.status)}</span>
                     <span className="font-medium">{item.count}</span>
                   </div>
                   <div className="h-1.5 w-full rounded-full bg-muted">
                     <div
-                      className={cn("h-full rounded-full", item.color)}
-                      style={{ width: `${item.percentage}%` }}
+                      className={cn("h-full rounded-full", statusColors[item.status])}
+                      style={{ width: `${Math.round((item.count / maxStatusCount) * 100)}%` }}
                     />
                   </div>
                 </div>
@@ -231,6 +192,11 @@ export function AdminDashboardClient({ stats, agentStats }: { stats: any, agentS
               </Link>
             </CardHeader>
             <CardContent className="space-y-3">
+              {agentStats.length === 0 && (
+                <p className="text-sm text-muted-foreground">
+                  No agents or supervisors have been added yet.
+                </p>
+              )}
               {agentStats.slice(0, 5).map((agent) => (
                 <div
                   key={agent.id}
@@ -268,7 +234,7 @@ export function AdminDashboardClient({ stats, agentStats }: { stats: any, agentS
                 </div>
                 <div className="flex-1">
                   <p className="text-xs text-muted-foreground">Avg. Resolution</p>
-                  <p className="text-sm font-bold">52 hours</p>
+                  <p className="text-sm font-bold">{stats.avgResolutionHours} hours</p>
                 </div>
               </div>
               <div className="flex items-center gap-3">
@@ -277,16 +243,7 @@ export function AdminDashboardClient({ stats, agentStats }: { stats: any, agentS
                 </div>
                 <div className="flex-1">
                   <p className="text-xs text-muted-foreground">SLA Compliance</p>
-                  <p className="text-sm font-bold">87%</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-status-under-review/10">
-                  <Users className="h-4 w-4 text-status-under-review" />
-                </div>
-                <div className="flex-1">
-                  <p className="text-xs text-muted-foreground">Citizen Satisfaction</p>
-                  <p className="text-sm font-bold">4.2 / 5.0</p>
+                  <p className="text-sm font-bold">{stats.slaCompliance}%</p>
                 </div>
               </div>
             </CardContent>
