@@ -44,16 +44,5 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // Admin-only routes: redirect non-admin users
-  if (user && request.nextUrl.pathname.startsWith("/admin")) {
-    // Check user role from metadata
-    const role = user.user_metadata?.role as string | undefined;
-    if (role !== "admin" && role !== "supervisor" && role !== "agent") {
-      const url = request.nextUrl.clone();
-      url.pathname = "/dashboard";
-      return NextResponse.redirect(url);
-    }
-  }
-
   return supabaseResponse;
 }

@@ -22,6 +22,7 @@ import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { createClient } from "@/lib/supabase/client";
+import { signOut } from "@/actions/auth";
 import { cn } from "@/lib/utils";
 
 const navItems = [
@@ -36,6 +37,7 @@ const navItems = [
 function SidebarContent({ onNavClick }: { onNavClick?: () => void }) {
   const pathname = usePathname();
   const [admin, setAdmin] = useState({ name: "Administrator", email: "" });
+  const [signingOut, setSigningOut] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -126,11 +128,23 @@ function SidebarContent({ onNavClick }: { onNavClick?: () => void }) {
               {admin.email || "Administrator"}
             </p>
           </div>
-          <Link href="/">
-            <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7 shrink-0"
+            disabled={signingOut}
+            onClick={() => {
+              setSigningOut(true);
+              signOut();
+            }}
+            aria-label={signingOut ? "Signing out" : "Sign out"}
+          >
+            {signingOut ? (
+              <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
+            ) : (
               <LogOut className="h-3.5 w-3.5" />
-            </Button>
-          </Link>
+            )}
+          </Button>
         </div>
       </div>
     </div>

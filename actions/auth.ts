@@ -98,11 +98,40 @@ export async function signIn(input: SignInInput) {
       return { error: "Invalid email or password" };
     }
 
-    // Get user role from our database
-    const user = await prisma.user.findUnique({
+    const fullName =
+      data.user.user_metadata?.full_name ||
+      data.user.email?.split("@")[0] ||
+      "CivicDesk User";
+
+    const metadataRole = data.user.user_metadata?.role as
+      | "citizen"
+      | "agent"
+      | "supervisor"
+      | "admin"
+      | undefined;
+
+    // Keep the app database in sync with Supabase Auth so verified users can log in.
+    const user = await prisma.user.upsert({
       where: { id: data.user.id },
-      select: { role: true },
+      update: {
+        email: data.user.email || email,
+        full_name: fullName,
+        is_active: true,
+      },
+      create: {
+        id: data.user.id,
+        email: data.user.email || email,
+        password_hash: "",
+        full_name: fullName,
+        role: metadataRole || "citizen",
+      },
+      select: { role: true, is_active: true },
     });
+
+    if (!user.is_active) {
+      await supabase.auth.signOut();
+      return { error: "This account is disabled. Contact an administrator." };
+    }
 
     revalidatePath("/", "layout");
 

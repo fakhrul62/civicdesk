@@ -7,12 +7,10 @@ import {
   FileText,
   MapPin,
   Paperclip,
-  Search,
   Tag,
   User,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -28,6 +26,7 @@ import {
 } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
 import { getTicketByNumber } from "@/actions/tickets";
+import { TrackSearchForm } from "./track-search-form";
 
 export const dynamic = "force-dynamic";
 
@@ -77,19 +76,7 @@ export default async function TrackPage({
             </p>
           </div>
 
-          <form className="mb-8 flex items-center gap-2 rounded-lg border bg-card p-1.5 shadow-sm">
-            <div className="flex flex-1 items-center gap-2 px-2">
-              <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
-              <Input
-                name="id"
-                type="text"
-                placeholder="Enter your ticket ID"
-                defaultValue={ticketNumber}
-                className="border-0 bg-transparent p-0 text-sm shadow-none focus-visible:ring-0"
-              />
-            </div>
-            <Button size="sm" type="submit">Track</Button>
-          </form>
+          <TrackSearchForm ticketNumber={ticketNumber} />
 
           {searched && !ticket && (
             <Card className="border text-center">

@@ -48,17 +48,42 @@ function Button({
   nativeButton,
   variant = "default",
   size = "default",
+  onClick,
+  disabled,
   ...props
 }: ButtonPrimitive.Props &
   VariantProps<typeof buttonVariants> & {
     asChild?: boolean
   }) {
+  const [clicked, setClicked] = React.useState(false)
+
+  const handleClick: ButtonPrimitive.Props["onClick"] = (event) => {
+    if (disabled || props["aria-disabled"] === true) return
+
+    setClicked(true)
+    window.setTimeout(() => setClicked(false), 280)
+    onClick?.(event)
+  }
+
   return (
     <ButtonPrimitive
       data-slot="button"
-      className={cn(buttonVariants({ variant, size, className }))}
+      data-clicked={clicked ? "true" : undefined}
+      className={cn(
+        buttonVariants({
+          variant,
+          size,
+          className: cn(
+            "relative overflow-hidden shadow-sm hover:shadow active:shadow-none data-[clicked=true]:ring-3 data-[clicked=true]:ring-ring/35",
+            "after:pointer-events-none after:absolute after:inset-0 after:bg-current after:opacity-0 after:transition-opacity data-[clicked=true]:after:opacity-10",
+            className
+          ),
+        })
+      )}
       nativeButton={asChild ? false : nativeButton}
       render={asChild && React.isValidElement(children) ? children : undefined}
+      disabled={disabled}
+      onClick={handleClick}
       {...props}
     >
       {asChild ? undefined : children}

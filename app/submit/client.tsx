@@ -67,6 +67,7 @@ export function SubmitClient({
   const [ticketNumber, setTicketNumber] = useState("");
   const [files, setFiles] = useState<File[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [navigatingTo, setNavigatingTo] = useState<"track" | "dashboard" | null>(null);
   const [error, setError] = useState("");
 
   const [categoryId, setCategoryId] = useState("");
@@ -186,11 +187,32 @@ export function SubmitClient({
                 </p>
               </div>
               <div className="flex w-full flex-col gap-2 sm:flex-row">
-                <Button className="flex-1" onClick={() => router.push(`/track?id=${ticketNumber}`)}>
-                  Track Complaint
+                <Button
+                  className="flex-1"
+                  disabled={navigatingTo !== null}
+                  onClick={() => {
+                    setNavigatingTo("track");
+                    router.push(`/track?id=${ticketNumber}`);
+                  }}
+                >
+                  {navigatingTo === "track" && (
+                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                  )}
+                  {navigatingTo === "track" ? "Opening tracking..." : "Track Complaint"}
                 </Button>
-                <Button variant="outline" className="flex-1" onClick={() => router.push("/dashboard")}>
-                  Dashboard
+                <Button
+                  variant="outline"
+                  className="flex-1"
+                  disabled={navigatingTo !== null}
+                  onClick={() => {
+                    setNavigatingTo("dashboard");
+                    router.push("/dashboard");
+                  }}
+                >
+                  {navigatingTo === "dashboard" && (
+                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                  )}
+                  {navigatingTo === "dashboard" ? "Opening dashboard..." : "Dashboard"}
                 </Button>
               </div>
             </CardContent>

@@ -28,6 +28,7 @@ const publicLinks = [
 export function NavbarClient({ user }: { user: any }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
 
   const isAdmin = pathname.startsWith("/admin");
 
@@ -83,11 +84,19 @@ export function NavbarClient({ user }: { user: any }) {
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => signOut()}
+                onClick={() => {
+                  setSigningOut(true);
+                  signOut();
+                }}
+                disabled={signingOut}
                 className="gap-1.5 text-muted-foreground"
               >
-                <LogOut className="h-3.5 w-3.5" />
-                Sign Out
+                {signingOut ? (
+                  <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                ) : (
+                  <LogOut className="h-3.5 w-3.5" />
+                )}
+                {signingOut ? "Signing out..." : "Sign Out"}
               </Button>
             </div>
           ) : (
@@ -161,12 +170,18 @@ export function NavbarClient({ user }: { user: any }) {
                     <button
                       onClick={() => {
                         setOpen(false);
+                        setSigningOut(true);
                         signOut();
                       }}
-                      className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground text-left"
+                      disabled={signingOut}
+                      className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-60"
                     >
-                      <LogOut className="h-4 w-4" />
-                      Sign Out
+                      {signingOut ? (
+                        <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                      ) : (
+                        <LogOut className="h-4 w-4" />
+                      )}
+                      {signingOut ? "Signing out..." : "Sign Out"}
                     </button>
                   </>
                 ) : (

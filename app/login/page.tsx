@@ -37,12 +37,20 @@ export default function LoginPage() {
 
       if (result.error) {
         setError(result.error);
+        setLoading(false);
       } else if (result.redirect) {
-        router.push(result.redirect);
+        const requestedRedirect = new URLSearchParams(window.location.search).get("redirect");
+        const target =
+          requestedRedirect && requestedRedirect.startsWith("/")
+            ? requestedRedirect
+            : result.redirect;
+
+        router.replace(target);
+        router.refresh();
+        return;
       }
     } catch {
       setError("An unexpected error occurred");
-    } finally {
       setLoading(false);
     }
   };

@@ -72,6 +72,7 @@ const categoryColors = [
 export function HomeClient({ stats, categories }: HomeClientProps) {
   const router = useRouter();
   const [ticketId, setTicketId] = useState("");
+  const [tracking, setTracking] = useState(false);
   const homepageStats = [
     { label: "Complaints Submitted", value: stats.totalTickets.toLocaleString(), icon: FileText },
     { label: "Complaints Resolved", value: stats.resolvedTickets.toLocaleString(), icon: CheckCircle2 },
@@ -81,6 +82,7 @@ export function HomeClient({ stats, categories }: HomeClientProps) {
 
   const handleTrack = () => {
     if (ticketId.trim()) {
+      setTracking(true);
       router.push(`/track?id=${encodeURIComponent(ticketId.trim())}`);
     }
   };
@@ -144,8 +146,12 @@ export function HomeClient({ stats, categories }: HomeClientProps) {
                     className="border-0 bg-transparent p-0 text-sm shadow-none focus-visible:ring-0"
                   />
                 </div>
-                <Button size="sm" onClick={handleTrack} className="shrink-0">
-                  Track
+                <Button size="sm" onClick={handleTrack} className="shrink-0" disabled={tracking}>
+                  {tracking ? (
+                    <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                  ) : (
+                    "Track"
+                  )}
                 </Button>
               </div>
               <p className="mt-2 text-xs text-muted-foreground">
