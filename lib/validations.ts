@@ -63,7 +63,7 @@ export const updateTicketPrioritySchema = z.object({
 
 export const assignAgentSchema = z.object({
   ticket_id: z.string().min(1),
-  agent_id: z.string().min(1, "Please select an agent"),
+  agent_id: z.string().min(1, "Please select an assignee"),
 });
 
 // ─────────────────────────────────────────────

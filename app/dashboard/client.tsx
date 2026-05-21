@@ -14,8 +14,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Navbar } from "@/components/navbar";
-import { Footer } from "@/components/footer";
 import {
   getStatusLabel,
   getStatusColor,
@@ -74,9 +72,6 @@ export function DashboardClient({ user, initialTickets }: { user: any, initialTi
   ];
 
   return (
-    <div className="flex min-h-screen flex-col">
-      <Navbar />
-
       <main className="flex-1 py-8 sm:py-12">
         <div className="mx-auto max-w-4xl px-4 sm:px-6">
           {/* Header */}
@@ -196,8 +191,5 @@ export function DashboardClient({ user, initialTickets }: { user: any, initialTi
           </Card>
         </div>
       </main>
-
-      <Footer />
-    </div>
   );
 }

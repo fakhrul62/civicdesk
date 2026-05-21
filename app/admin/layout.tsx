@@ -17,26 +17,29 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { LanguageSwitcher } from "@/components/language-switcher";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { createClient } from "@/lib/supabase/client";
 import { signOut } from "@/actions/auth";
+import { useLanguage } from "@/components/language-provider";
 import { cn } from "@/lib/utils";
 
 const navItems = [
-  { href: "/admin", label: "Dashboard", icon: LayoutDashboard, exact: true },
-  { href: "/admin/tickets", label: "Tickets", icon: Ticket },
-  { href: "/admin/agents", label: "Agents", icon: Users },
-  { href: "/admin/analytics", label: "Analytics", icon: BarChart3 },
-  { href: "/admin/audit-log", label: "Audit Log", icon: ScrollText },
-  { href: "/admin/settings", label: "Settings", icon: Settings },
+  { href: "/admin", labelKey: "admin.dashboard", icon: LayoutDashboard, exact: true },
+  { href: "/admin/tickets", labelKey: "admin.tickets", icon: Ticket },
+  { href: "/admin/agents", labelKey: "admin.agents", icon: Users },
+  { href: "/admin/analytics", labelKey: "admin.analytics", icon: BarChart3 },
+  { href: "/admin/audit-log", labelKey: "admin.auditLog", icon: ScrollText },
+  { href: "/admin/settings", labelKey: "admin.settings", icon: Settings },
 ];
 
 function SidebarContent({ onNavClick }: { onNavClick?: () => void }) {
   const pathname = usePathname();
-  const [admin, setAdmin] = useState({ name: "Administrator", email: "" });
+  const { t } = useLanguage();
+  const [admin, setAdmin] = useState({ name: t("admin.fallbackName"), email: "" });
   const [signingOut, setSigningOut] = useState(false);
 
   useEffect(() => {
@@ -53,7 +56,7 @@ function SidebarContent({ onNavClick }: { onNavClick?: () => void }) {
         name:
           user.user_metadata?.full_name ||
           user.email?.split("@")[0] ||
-          "Administrator",
+          t("admin.fallbackName"),
         email: user.email || "",
       });
     }
@@ -63,7 +66,7 @@ function SidebarContent({ onNavClick }: { onNavClick?: () => void }) {
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [t]);
 
   const initials = admin.name
     .split(/\s+/)
@@ -83,7 +86,7 @@ function SidebarContent({ onNavClick }: { onNavClick?: () => void }) {
           Civic<span className="text-primary">Desk</span>
         </span>
         <Badge variant="secondary" className="ml-auto text-[10px]">
-          Admin
+          {t("admin.badge")}
         </Badge>
       </div>
 
@@ -106,7 +109,7 @@ function SidebarContent({ onNavClick }: { onNavClick?: () => void }) {
                   )}
                 >
                   <item.icon className="h-4 w-4" />
-                  {item.label}
+                  {t(item.labelKey)}
                 </div>
               </Link>
             );
@@ -125,7 +128,7 @@ function SidebarContent({ onNavClick }: { onNavClick?: () => void }) {
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium truncate">{admin.name}</p>
             <p className="text-[10px] text-muted-foreground truncate">
-              {admin.email || "Administrator"}
+              {admin.email || t("admin.fallbackName")}
             </p>
           </div>
           <Button
@@ -137,7 +140,7 @@ function SidebarContent({ onNavClick }: { onNavClick?: () => void }) {
               setSigningOut(true);
               signOut();
             }}
-            aria-label={signingOut ? "Signing out" : "Sign out"}
+            aria-label={signingOut ? t("admin.signingOut") : t("admin.signOut")}
           >
             {signingOut ? (
               <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
@@ -188,6 +191,9 @@ export default function AdminLayout({
             <Button variant="ghost" size="icon" className="relative h-9 w-9">
               <Bell className="h-4 w-4" />
             </Button>
+            <div className="hidden sm:block">
+              <LanguageSwitcher compact />
+            </div>
             <ThemeToggle />
           </div>
         </header>

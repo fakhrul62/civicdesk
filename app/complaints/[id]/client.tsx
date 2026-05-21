@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -21,8 +21,6 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Navbar } from "@/components/navbar";
-import { Footer } from "@/components/footer";
 import {
   getStatusLabel,
   getStatusColor,
@@ -50,8 +48,6 @@ export function ComplaintDetailClient({
 
   if (!ticket) {
     return (
-      <div className="flex min-h-screen flex-col">
-        <Navbar />
         <main className="flex flex-1 items-center justify-center p-4">
           <Card className="w-full max-w-sm border text-center">
             <CardContent className="p-8">
@@ -67,8 +63,6 @@ export function ComplaintDetailClient({
             </CardContent>
           </Card>
         </main>
-        <Footer />
-      </div>
     );
   }
 
@@ -98,9 +92,6 @@ export function ComplaintDetailClient({
   }));
 
   return (
-    <div className="flex min-h-screen flex-col">
-      <Navbar />
-
       <main className="flex-1 py-8 sm:py-12">
         <div className="mx-auto max-w-4xl px-4 sm:px-6">
           {/* Back */}
@@ -245,19 +236,28 @@ export function ComplaintDetailClient({
 
                 <TabsContent value="attachments" className="mt-4">
                   <Card className="border">
-                    <CardContent className="p-6 text-center text-sm text-muted-foreground">
-                      <Paperclip className="mx-auto h-8 w-8 mb-2 text-muted-foreground/50" />
-                      <p>2 attachments uploaded</p>
-                      <div className="mt-3 flex justify-center gap-2">
-                        <Badge variant="secondary" className="gap-1">
-                          <Paperclip className="h-3 w-3" />
-                          pothole_photo_1.jpg
-                        </Badge>
-                        <Badge variant="secondary" className="gap-1">
-                          <Paperclip className="h-3 w-3" />
-                          damage_report.pdf
-                        </Badge>
-                      </div>
+                    <CardContent className="p-6 text-sm text-muted-foreground">
+                      {ticket.attachments?.length > 0 ? (
+                        <div className="grid gap-2 sm:grid-cols-2">
+                          {ticket.attachments.map((file: any) => (
+                            <a
+                              key={file.id}
+                              href={file.file_url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="flex items-center gap-2 rounded-md border p-3 hover:bg-muted"
+                            >
+                              <Paperclip className="h-4 w-4 text-primary" />
+                              <span className="truncate">{file.file_name}</span>
+                            </a>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="text-center">
+                          <Paperclip className="mx-auto mb-2 h-8 w-8 text-muted-foreground/50" />
+                          <p>No attachments submitted.</p>
+                        </div>
+                      )}
                     </CardContent>
                   </Card>
                 </TabsContent>
@@ -282,7 +282,17 @@ export function ComplaintDetailClient({
                     <MapPin className="mt-0.5 h-3.5 w-3.5 text-muted-foreground" />
                     <div>
                       <p className="text-xs text-muted-foreground">Location</p>
-                      <p className="font-medium">{ticket.location_address || ticket.location_area || ticket.location_city || "Not specified"}</p>
+                      <p className="font-medium">{ticket.location || "Not specified"}</p>
+                      {ticket.latitude && ticket.longitude && (
+                        <a
+                          className="mt-1 inline-flex text-xs text-primary hover:underline"
+                          href={`https://www.openstreetmap.org/?mlat=${ticket.latitude}&mlon=${ticket.longitude}#map=17/${ticket.latitude}/${ticket.longitude}`}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          Open map
+                        </a>
+                      )}
                     </div>
                   </div>
                   <div className="flex items-start gap-2">
@@ -311,7 +321,7 @@ export function ComplaintDetailClient({
                     <div>
                       <p className="text-xs text-muted-foreground">Due Date</p>
                       <p className="font-medium">
-                        {formatDateTime(ticket.due_date)}
+                        {ticket.due_date ? formatDateTime(ticket.due_date) : "Not set"}
                       </p>
                     </div>
                   </div>
@@ -332,8 +342,5 @@ export function ComplaintDetailClient({
           </div>
         </div>
       </main>
-
-      <Footer />
-    </div>
   );
 }

@@ -2,6 +2,8 @@ import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/actions/auth";
 import { getCategories } from "@/actions/admin";
 import { SubmitClient } from "./client";
+import { Navbar } from "@/components/navbar";
+import { Footer } from "@/components/footer";
 
 export const dynamic = "force-dynamic";
 
@@ -15,5 +17,11 @@ export default async function SubmitPage() {
   // Fetch active categories
   const categories = await getCategories();
   
-  return <SubmitClient user={user} categories={categories || []} />;
+  return (
+    <div className="flex min-h-screen flex-col">
+      <Navbar />
+      <SubmitClient user={user} categories={categories || []} />
+      <Footer />
+    </div>
+  );
 }

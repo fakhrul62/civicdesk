@@ -43,6 +43,8 @@ import { cn } from "@/lib/utils";
 import { sendMessage } from "@/actions/messages";
 import { updateTicketStatus, updateTicketPriority, assignAgent } from "@/actions/tickets";
 
+const UNASSIGNED = "unassigned";
+
 type TimelineItem = {
   id: string;
   description: string;
@@ -72,8 +74,10 @@ export function AdminTicketDetailClient({
   
   const [status, setStatus] = useState<string>(ticket.status || "submitted");
   const [priority, setPriority] = useState<string>(ticket.priority || "medium");
-  const [assignedAgent, setAssignedAgent] = useState<string>(ticket.assigned_to || "");
+  const [assignedAgent, setAssignedAgent] = useState<string>(ticket.assigned_to || UNASSIGNED);
   const [isSaving, setIsSaving] = useState(false);
+  const [saveMessage, setSaveMessage] = useState("");
+  const [saveError, setSaveError] = useState("");
 
   const ticketAudit = auditLogs || [];
 
@@ -94,7 +98,7 @@ export function AdminTicketDetailClient({
     );
   }
 
-  const isOverdue = new Date(ticket.due_date) < new Date() && ticket.status !== "resolved" && ticket.status !== "closed";
+  const isOverdue = Boolean(ticket.due_date) && new Date(ticket.due_date) < new Date() && ticket.status !== "resolved" && ticket.status !== "closed";
 
   const handleSend = async () => {
     if (!newMessage.trim() || isSending) return;
@@ -117,17 +121,44 @@ export function AdminTicketDetailClient({
   };
 
   const handleSaveChanges = async () => {
+    setSaveMessage("");
+    setSaveError("");
     setIsSaving(true);
     try {
+      let changed = false;
+
       if (status !== ticket.status) {
-        await updateTicketStatus({ ticket_id: id, status: status as any });
+        const result = await updateTicketStatus({ ticket_id: id, status: status as any });
+        if (result?.error) {
+          setSaveError(result.error);
+          return;
+        }
+        changed = true;
       }
       if (priority !== ticket.priority) {
-        await updateTicketPriority({ ticket_id: id, priority: priority as any });
+        const result = await updateTicketPriority({ ticket_id: id, priority: priority as any });
+        if (result?.error) {
+          setSaveError(result.error);
+          return;
+        }
+        changed = true;
       }
-      if (assignedAgent && assignedAgent !== ticket.assigned_to) {
-        await assignAgent({ ticket_id: id, agent_id: assignedAgent });
+      const currentAssignee = ticket.assigned_to || UNASSIGNED;
+      if (assignedAgent !== currentAssignee) {
+        const result = await assignAgent({ ticket_id: id, agent_id: assignedAgent });
+        if (result?.error) {
+          setSaveError(result.error);
+          return;
+        }
+        changed = true;
       }
+
+      if (!changed) {
+        setSaveMessage("No changes to save.");
+        return;
+      }
+
+      setSaveMessage("Ticket updated.");
       router.refresh();
     } finally {
       setIsSaving(false);
@@ -332,12 +363,27 @@ export function AdminTicketDetailClient({
               <div className="space-y-1.5">
                 <Label className="text-xs">Assigned Agent</Label>
                 <Select value={assignedAgent} onValueChange={setAssignedAgent}>
-                  <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Select agent" /></SelectTrigger>
+                  <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Select assignee" /></SelectTrigger>
                   <SelectContent>
-                    {agents.map((a: any) => (<SelectItem key={a.id} value={a.id}>{a.full_name}</SelectItem>))}
+                    <SelectItem value={UNASSIGNED}>Unassigned</SelectItem>
+                    {agents.map((a: any) => (
+                      <SelectItem key={a.id} value={a.id}>
+                        {a.full_name} ({a.role})
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
+              {saveError && (
+                <p className="rounded-md border border-destructive/25 bg-destructive/5 p-2 text-xs text-destructive">
+                  {saveError}
+                </p>
+              )}
+              {saveMessage && (
+                <p className="rounded-md border bg-muted/50 p-2 text-xs text-muted-foreground">
+                  {saveMessage}
+                </p>
+              )}
               <Button className="w-full" size="sm" onClick={handleSaveChanges} disabled={isSaving}>{isSaving ? "Saving..." : "Save Changes"}</Button>
             </CardContent>
           </Card>
@@ -351,7 +397,7 @@ export function AdminTicketDetailClient({
               <div className="flex items-start gap-2"><User className="mt-0.5 h-3.5 w-3.5 text-muted-foreground" /><div><p className="text-xs text-muted-foreground">Citizen</p><p className="font-medium">{ticket.citizen?.full_name}</p></div></div>
               <Separator />
               <div className="flex items-start gap-2"><Calendar className="mt-0.5 h-3.5 w-3.5 text-muted-foreground" /><div><p className="text-xs text-muted-foreground">Submitted</p><p className="font-medium">{formatDateTime(ticket.created_at)}</p></div></div>
-              <div className="flex items-start gap-2"><Clock className="mt-0.5 h-3.5 w-3.5 text-muted-foreground" /><div><p className="text-xs text-muted-foreground">Due Date</p><p className={cn("font-medium", isOverdue && "text-priority-critical")}>{formatDateTime(ticket.due_date)} {isOverdue && "(Overdue)"}</p></div></div>
+              <div className="flex items-start gap-2"><Clock className="mt-0.5 h-3.5 w-3.5 text-muted-foreground" /><div><p className="text-xs text-muted-foreground">Due Date</p><p className={cn("font-medium", isOverdue && "text-priority-critical")}>{ticket.due_date ? formatDateTime(ticket.due_date) : "Not set"} {isOverdue && "(Overdue)"}</p></div></div>
               <div className="flex items-start gap-2"><CheckCircle2 className="mt-0.5 h-3.5 w-3.5 text-muted-foreground" /><div><p className="text-xs text-muted-foreground">Last Updated</p><p className="font-medium">{formatDateTime(ticket.updated_at)}</p></div></div>
             </CardContent>
           </Card>

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
+import { useLanguage } from "@/components/language-provider";
 
 function isInternalUrl(href: string) {
   try {
@@ -24,6 +25,7 @@ function isSamePageHash(href: string) {
 export function NavigationLoader() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const { t } = useLanguage();
   const routeKey = useMemo(
     () => `${pathname}?${searchParams.toString()}`,
     [pathname, searchParams]
@@ -98,9 +100,9 @@ export function NavigationLoader() {
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-background/80 px-4 backdrop-blur-sm">
       <div className="w-full max-w-xs rounded-lg border bg-card p-6 text-center shadow-lg">
         <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-primary/25 border-t-primary" />
-        <p className="mt-4 text-sm font-medium">Loading page...</p>
+        <p className="mt-4 text-sm font-medium">{t("loader.title")}</p>
         <p className="mt-1 text-xs text-muted-foreground">
-          CivicDesk is opening the next screen.
+          {t("loader.body")}
         </p>
       </div>
     </div>

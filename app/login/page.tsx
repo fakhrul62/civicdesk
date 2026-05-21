@@ -17,8 +17,10 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { signIn } from "@/actions/auth";
+import { useLanguage } from "@/components/language-provider";
 
 export default function LoginPage() {
+  const { t } = useLanguage();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -30,7 +32,7 @@ export default function LoginPage() {
     e.preventDefault();
     setError("");
     setLoading(true);
-    setLoadingMessage("Checking your account...");
+    setLoadingMessage(t("login.checking"));
 
     try {
       const result = await signIn({ email, password });
@@ -46,13 +48,13 @@ export default function LoginPage() {
             ? requestedRedirect
             : result.redirect;
 
-        setLoadingMessage("Opening your dashboard...");
+        setLoadingMessage(t("login.opening"));
         window.dispatchEvent(new Event("civicdesk:navigation-start"));
         window.location.assign(target);
         return;
       }
     } catch {
-      setError("An unexpected error occurred");
+      setError(t("login.unexpected"));
       setLoading(false);
       setLoadingMessage("");
     }
@@ -64,9 +66,9 @@ export default function LoginPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 px-4 backdrop-blur-sm">
           <div className="w-full max-w-xs rounded-lg border bg-card p-6 text-center shadow-lg">
             <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-primary/25 border-t-primary" />
-            <p className="mt-4 text-sm font-medium">{loadingMessage || "Loading..."}</p>
+            <p className="mt-4 text-sm font-medium">{loadingMessage || t("login.loading")}</p>
             <p className="mt-1 text-xs text-muted-foreground">
-              Keep this page open while CivicDesk loads the next screen.
+              {t("login.keepOpen")}
             </p>
           </div>
         </div>
@@ -81,11 +83,11 @@ export default function LoginPage() {
             <Landmark className="h-6 w-6 text-primary-foreground" />
           </div>
           <CardTitle className="text-xl">
-            Welcome back to{" "}
+            {t("login.welcome")}{" "}
             <span className="text-primary">CivicDesk</span>
           </CardTitle>
           <p className="text-sm text-muted-foreground">
-            Sign in to manage your complaints
+            {t("login.subtitle")}
           </p>
         </CardHeader>
 
@@ -99,7 +101,7 @@ export default function LoginPage() {
 
             <div className="space-y-1.5">
               <Label htmlFor="email" className="text-sm">
-                Email Address
+                {t("login.email")}
               </Label>
               <div className="relative">
                 <Mail className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -118,13 +120,13 @@ export default function LoginPage() {
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
                 <Label htmlFor="password" className="text-sm">
-                  Password
+                  {t("login.password")}
                 </Label>
                 <Link
                   href="/forgot-password"
                   className="text-xs text-primary hover:underline"
                 >
-                  Forgot password?
+                  {t("login.forgot")}
                 </Link>
               </div>
               <div className="relative">
@@ -132,7 +134,7 @@ export default function LoginPage() {
                 <Input
                   id="password"
                   type={showPassword ? "text" : "password"}
-                  placeholder="Enter your password"
+                  placeholder={t("login.passwordPlaceholder")}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="pl-9 pr-9"
@@ -158,7 +160,7 @@ export default function LoginPage() {
               ) : (
                 <LogIn className="h-4 w-4" />
               )}
-              {loading ? "Signing in..." : "Sign In"}
+              {loading ? t("login.signingIn") : t("login.signIn")}
             </Button>
           </form>
 
@@ -166,12 +168,12 @@ export default function LoginPage() {
 
           <div className="space-y-3 text-center text-sm">
             <p className="text-muted-foreground">
-              Don&apos;t have an account?{" "}
+              {t("login.noAccount")}{" "}
               <Link
                 href="/signup"
                 className="font-medium text-primary hover:underline"
               >
-                Create one
+                {t("login.createOne")}
               </Link>
             </p>
             <Link
@@ -179,7 +181,7 @@ export default function LoginPage() {
               className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
             >
               <ArrowRight className="h-3 w-3 rotate-180" />
-              Back to homepage
+              {t("login.backHome")}
             </Link>
           </div>
         </CardContent>

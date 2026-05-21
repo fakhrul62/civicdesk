@@ -136,12 +136,15 @@ export default async function TrackPage({
                       {getPriorityLabel(ticket.priority)} Priority
                     </Badge>
                     {ticket.latitude && ticket.longitude && (
-                      <Button type="button" variant="outline" size="sm" asChild className="h-7 gap-1.5 text-xs">
-                        <a href={`https://www.openstreetmap.org/?mlat=${ticket.latitude}&mlon=${ticket.longitude}#map=17/${ticket.latitude}/${ticket.longitude}`} target="_blank" rel="noreferrer">
-                          <MapPin className="h-3 w-3" />
-                          View Map
-                        </a>
-                      </Button>
+                      <a
+                        href={`https://www.openstreetmap.org/?mlat=${ticket.latitude}&mlon=${ticket.longitude}#map=17/${ticket.latitude}/${ticket.longitude}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex h-7 items-center justify-center gap-1.5 rounded-md border border-border bg-background px-2.5 text-xs font-medium transition-colors hover:bg-muted hover:text-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+                      >
+                        <MapPin className="h-3 w-3" />
+                        View Map
+                      </a>
                     )}
                   </div>
                 </CardContent>

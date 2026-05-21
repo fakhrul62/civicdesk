@@ -7,7 +7,6 @@ import {
   MoreHorizontal,
   Eye,
   UserPlus,
-  Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,7 +31,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
@@ -227,14 +225,11 @@ export function AdminTicketsClient({ initialData }: { initialData: any }) {
                           View Details
                         </Link>
                       </DropdownMenuItem>
-                      <DropdownMenuItem>
-                        <UserPlus className="mr-2 h-3.5 w-3.5" />
-                        Assign Agent
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem className="text-destructive">
-                        <Trash2 className="mr-2 h-3.5 w-3.5" />
-                        Delete
+                      <DropdownMenuItem asChild>
+                        <Link href={`/admin/tickets/${ticket.id}`}>
+                          <UserPlus className="mr-2 h-3.5 w-3.5" />
+                          Manage Assignment
+                        </Link>
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>

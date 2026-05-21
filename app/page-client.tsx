@@ -19,33 +19,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-
-const steps = [
-  {
-    step: "01",
-    title: "Submit Your Complaint",
-    description: "Fill out a simple form describing your civic issue. Attach photos, select a category, and provide the location.",
-    icon: FileText,
-  },
-  {
-    step: "02",
-    title: "Receive a Ticket ID",
-    description: "Get an instant unique ticket number to track your complaint status at any time without needing to log in.",
-    icon: Shield,
-  },
-  {
-    step: "03",
-    title: "We Investigate & Act",
-    description: "Your complaint is routed to the right department. Agents review, prioritize, and work to resolve the issue.",
-    icon: Zap,
-  },
-  {
-    step: "04",
-    title: "Stay Updated",
-    description: "Receive status updates via email and track progress through our portal until your issue is fully resolved.",
-    icon: MessageSquare,
-  },
-];
+import { useLanguage } from "@/components/language-provider";
 
 type HomeClientProps = {
   stats: {
@@ -71,13 +45,40 @@ const categoryColors = [
 
 export function HomeClient({ stats, categories }: HomeClientProps) {
   const router = useRouter();
+  const { t } = useLanguage();
   const [ticketId, setTicketId] = useState("");
   const [tracking, setTracking] = useState(false);
+  const steps = [
+    {
+      step: "01",
+      title: t("home.step1Title"),
+      description: t("home.step1Body"),
+      icon: FileText,
+    },
+    {
+      step: "02",
+      title: t("home.step2Title"),
+      description: t("home.step2Body"),
+      icon: Shield,
+    },
+    {
+      step: "03",
+      title: t("home.step3Title"),
+      description: t("home.step3Body"),
+      icon: Zap,
+    },
+    {
+      step: "04",
+      title: t("home.step4Title"),
+      description: t("home.step4Body"),
+      icon: MessageSquare,
+    },
+  ];
   const homepageStats = [
-    { label: "Complaints Submitted", value: stats.totalTickets.toLocaleString(), icon: FileText },
-    { label: "Complaints Resolved", value: stats.resolvedTickets.toLocaleString(), icon: CheckCircle2 },
-    { label: "Active Citizens", value: stats.activeCitizens.toLocaleString(), icon: Users },
-    { label: "Avg. Resolution Time", value: `${stats.avgResolutionHours} hrs`, icon: Clock },
+    { label: t("home.statsSubmitted"), value: stats.totalTickets.toLocaleString(), icon: FileText },
+    { label: t("home.statsResolved"), value: stats.resolvedTickets.toLocaleString(), icon: CheckCircle2 },
+    { label: t("home.statsCitizens"), value: stats.activeCitizens.toLocaleString(), icon: Users },
+    { label: t("home.statsAvg"), value: `${stats.avgResolutionHours} hrs`, icon: Clock },
   ];
 
   const handleTrack = () => {
@@ -103,17 +104,16 @@ export function HomeClient({ stats, categories }: HomeClientProps) {
               className="mb-4 gap-1.5 border px-3 py-1 text-xs font-medium"
             >
               <Landmark className="h-3 w-3" />
-              Government Complaint Portal
+              {t("home.badge")}
             </Badge>
 
             <h1 className="text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl">
-              Your voice matters.{" "}
-              <span className="text-primary">We listen.</span>
+              {t("home.headingPrefix")}{" "}
+              <span className="text-primary">{t("home.headingAccent")}</span>
             </h1>
 
             <p className="mx-auto mt-4 max-w-lg text-base leading-relaxed text-muted-foreground sm:text-lg">
-              Report civic issues, track their progress in real time, and hold
-              your government accountable — all in one transparent platform.
+              {t("home.description")}
             </p>
 
             {/* CTA Buttons */}
@@ -121,14 +121,14 @@ export function HomeClient({ stats, categories }: HomeClientProps) {
               <Button asChild size="lg" className="w-full gap-2 sm:w-auto">
                 <Link href="/submit">
                   <FileText className="h-4 w-4" />
-                  Submit a Complaint
+                  {t("home.submitCta")}
                   <ArrowRight className="h-4 w-4" />
                 </Link>
               </Button>
               <Button asChild variant="outline" size="lg" className="w-full gap-2 sm:w-auto">
                 <Link href="/dashboard">
                   <Users className="h-4 w-4" />
-                  Citizen Dashboard
+                  {t("home.citizenDashboard")}
                 </Link>
               </Button>
             </div>
@@ -140,7 +140,7 @@ export function HomeClient({ stats, categories }: HomeClientProps) {
                   <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
                   <Input
                     type="text"
-                    placeholder="Enter your ticket ID"
+                    placeholder={t("home.ticketPlaceholder")}
                     value={ticketId}
                     onChange={(e) => setTicketId(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && handleTrack()}
@@ -151,12 +151,12 @@ export function HomeClient({ stats, categories }: HomeClientProps) {
                   {tracking ? (
                     <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
                   ) : (
-                    "Track"
+                    t("home.track")
                   )}
                 </Button>
               </div>
               <p className="mt-2 text-xs text-muted-foreground">
-                Already submitted? Enter your ticket ID to check status instantly.
+                {t("home.trackHelp")}
               </p>
             </div>
           </div>
@@ -185,13 +185,13 @@ export function HomeClient({ stats, categories }: HomeClientProps) {
         <div className="mx-auto max-w-6xl px-4 sm:px-6">
           <div className="mx-auto max-w-lg text-center">
             <Badge variant="secondary" className="mb-3 text-xs">
-              Simple Process
+              {t("home.simpleProcess")}
             </Badge>
             <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
-              How it works
+              {t("home.howItWorks")}
             </h2>
             <p className="mt-2 text-sm text-muted-foreground">
-              From submission to resolution — a transparent process you can trust.
+              {t("home.howItWorksBody")}
             </p>
           </div>
 
@@ -230,13 +230,13 @@ export function HomeClient({ stats, categories }: HomeClientProps) {
         <div className="mx-auto max-w-6xl px-4 sm:px-6">
           <div className="mx-auto max-w-lg text-center">
             <Badge variant="secondary" className="mb-3 text-xs">
-              Departments
+              {t("home.departments")}
             </Badge>
             <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
-              What you can report
+              {t("home.reportTitle")}
             </h2>
             <p className="mt-2 text-sm text-muted-foreground">
-              We handle complaints across all major civic service categories.
+              {t("home.reportBody")}
             </p>
           </div>
 
@@ -258,7 +258,7 @@ export function HomeClient({ stats, categories }: HomeClientProps) {
                     <span className="text-sm font-medium">{cat.name}</span>
                   </div>
                   <Badge variant="secondary" className="text-xs font-normal">
-                    {cat.count.toLocaleString()} complaints
+                    {cat.count.toLocaleString()} {t("home.complaints")}
                   </Badge>
                 </CardContent>
               </Card>
@@ -276,23 +276,22 @@ export function HomeClient({ stats, categories }: HomeClientProps) {
                 <Landmark className="h-6 w-6 text-primary" />
               </div>
               <h2 className="text-2xl font-bold tracking-tight">
-                Ready to make a difference?
+                {t("home.ready")}
               </h2>
               <p className="max-w-md text-sm text-muted-foreground">
-                Your complaint helps improve civic services for everyone. Start by
-                submitting your issue — we&apos;ll take it from there.
+                {t("home.readyBody")}
               </p>
               <div className="flex flex-col gap-3 sm:flex-row">
                 <Button asChild size="lg" className="gap-2">
                   <Link href="/submit">
                     <FileText className="h-4 w-4" />
-                    Submit a Complaint
+                    {t("home.submitCta")}
                   </Link>
                 </Button>
                 <Button asChild variant="outline" size="lg" className="gap-2">
                   <Link href="/track">
                     <Search className="h-4 w-4" />
-                    Track Existing Complaint
+                    {t("home.trackExisting")}
                   </Link>
                 </Button>
               </div>

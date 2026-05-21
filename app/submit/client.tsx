@@ -28,17 +28,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Navbar } from "@/components/navbar";
-import { Footer } from "@/components/footer";
 import { cn } from "@/lib/utils";
 import { createTicketFromForm } from "@/actions/tickets";
-
-const formSteps = [
-  { id: 1, title: "Category", icon: FileText },
-  { id: 2, title: "Details", icon: ClipboardCheck },
-  { id: 3, title: "Location", icon: MapPin },
-  { id: 4, title: "Contact", icon: User },
-];
+import { useLanguage } from "@/components/language-provider";
 
 type Category = {
   id: string;
@@ -62,6 +54,7 @@ export function SubmitClient({
   categories: Category[];
 }) {
   const router = useRouter();
+  const { t } = useLanguage();
   const [step, setStep] = useState(1);
   const [submitted, setSubmitted] = useState(false);
   const [ticketNumber, setTicketNumber] = useState("");
@@ -82,6 +75,12 @@ export function SubmitClient({
   const [latitude, setLatitude] = useState("");
   const [longitude, setLongitude] = useState("");
   const [locationLoading, setLocationLoading] = useState(false);
+  const formSteps = [
+    { id: 1, title: t("submit.stepCategory"), icon: FileText },
+    { id: 2, title: t("submit.stepDetails"), icon: ClipboardCheck },
+    { id: 3, title: t("submit.stepLocation"), icon: MapPin },
+    { id: 4, title: t("submit.stepContact"), icon: User },
+  ];
 
   const selectedCategory = categories.find((c) => c.id === categoryId);
   const location = [address, area, city].filter(Boolean).join(", ");
@@ -93,15 +92,15 @@ export function SubmitClient({
   const nextStep = () => {
     setError("");
     if (step === 1 && !selectedCategory) {
-      setError("Please select a complaint category.");
+      setError(t("submit.errorCategory"));
       return;
     }
     if (step === 2 && (title.trim().length < 10 || description.trim().length < 20)) {
-      setError("Add a title of at least 10 characters and a description of at least 20 characters.");
+      setError(t("submit.errorDetails"));
       return;
     }
     if (step === 3 && location.trim().length < 5) {
-      setError("Please provide a usable address or area.");
+      setError(t("submit.errorLocation"));
       return;
     }
     setStep(step + 1);
@@ -115,7 +114,7 @@ export function SubmitClient({
 
   const handleUseCurrentLocation = () => {
     if (!navigator.geolocation) {
-      setError("Your browser does not support location detection.");
+      setError(t("submit.errorNoGeo"));
       return;
     }
 
@@ -128,7 +127,7 @@ export function SubmitClient({
         setLocationLoading(false);
       },
       () => {
-        setError("Could not read your current location. You can enter the address manually.");
+        setError(t("submit.errorGeo"));
         setLocationLoading(false);
       },
       { enableHighAccuracy: true, timeout: 10000 }
@@ -140,7 +139,7 @@ export function SubmitClient({
     setIsSubmitting(true);
 
     if (!selectedCategory) {
-      setError("Please select a valid category.");
+      setError(t("submit.errorValidCategory"));
       setIsSubmitting(false);
       return;
     }
@@ -168,20 +167,18 @@ export function SubmitClient({
 
   if (submitted) {
     return (
-      <div className="flex min-h-screen flex-col">
-        <Navbar />
         <main className="flex flex-1 items-center justify-center p-4">
           <Card className="mx-auto w-full max-w-md border text-center">
             <CardContent className="flex flex-col items-center gap-4 p-8">
               <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
                 <CheckCircle2 className="h-8 w-8 text-primary" />
               </div>
-              <h2 className="text-2xl font-bold">Complaint Submitted</h2>
+              <h2 className="text-2xl font-bold">{t("submit.submitted")}</h2>
               <p className="text-sm text-muted-foreground">
-                Your complaint has been registered. Use this ticket ID to track its progress.
+                {t("submit.submittedBody")}
               </p>
               <div className="w-full rounded-lg border bg-muted/50 p-4">
-                <p className="text-xs text-muted-foreground">Ticket ID</p>
+                <p className="text-xs text-muted-foreground">{t("submit.ticketId")}</p>
                 <p className="mt-1 text-2xl font-bold tracking-wider text-primary">
                   {ticketNumber}
                 </p>
@@ -199,7 +196,7 @@ export function SubmitClient({
                   {navigatingTo === "track" && (
                     <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
                   )}
-                  {navigatingTo === "track" ? "Opening tracking..." : "Track Complaint"}
+                  {navigatingTo === "track" ? t("submit.openingTracking") : t("submit.trackComplaint")}
                 </Button>
                 <Button
                   variant="outline"
@@ -214,26 +211,22 @@ export function SubmitClient({
                   {navigatingTo === "dashboard" && (
                     <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
                   )}
-                  {navigatingTo === "dashboard" ? "Opening dashboard..." : "Dashboard"}
+                  {navigatingTo === "dashboard" ? t("submit.openingDashboard") : t("submit.dashboard")}
                 </Button>
               </div>
             </CardContent>
           </Card>
         </main>
-        <Footer />
-      </div>
     );
   }
 
   return (
-    <div className="flex min-h-screen flex-col">
-      <Navbar />
       <main className="flex-1 py-8 sm:py-12">
         <div className="mx-auto max-w-2xl px-4 sm:px-6">
           <div className="mb-8">
-            <h1 className="text-2xl font-bold tracking-tight">Submit a Complaint</h1>
+            <h1 className="text-2xl font-bold tracking-tight">{t("submit.title")}</h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              Describe the civic issue and attach evidence so the right team can act.
+              {t("submit.subtitle")}
             </p>
           </div>
 
@@ -274,10 +267,10 @@ export function SubmitClient({
               {step === 1 && (
                 <>
                   <div className="space-y-2">
-                    <Label htmlFor="category">Select Category <span className="text-destructive">*</span></Label>
+                    <Label htmlFor="category">{t("submit.selectCategory")} <span className="text-destructive">*</span></Label>
                     <Select value={categoryId} onValueChange={setCategoryId}>
                       <SelectTrigger id="category" className="w-full">
-                        <SelectValue placeholder="Choose a category" />
+                        <SelectValue placeholder={t("submit.chooseCategory")} />
                       </SelectTrigger>
                       <SelectContent align="start" className="w-[min(90vw,36rem)]">
                         {categories.map((cat) => (
@@ -296,7 +289,7 @@ export function SubmitClient({
                       <p className="font-medium">{selectedCategory.name}</p>
                       <p className="mt-0.5 text-muted-foreground">{selectedCategory.description || selectedCategory.department}</p>
                       <p className="mt-2 text-xs text-muted-foreground">
-                        Routed to {selectedCategory.department} · target response {selectedCategory.sla_hours} hours
+                        {t("submit.routedTo")} {selectedCategory.department} · {t("submit.targetResponse")} {selectedCategory.sla_hours} {t("submit.hours")}
                       </p>
                     </div>
                   )}
@@ -306,26 +299,26 @@ export function SubmitClient({
               {step === 2 && (
                 <>
                   <div className="space-y-2">
-                    <Label htmlFor="title">Title <span className="text-destructive">*</span></Label>
-                    <Input id="title" placeholder="Brief summary of your complaint" value={title} onChange={(e) => setTitle(e.target.value)} />
+                    <Label htmlFor="title">{t("submit.titleLabel")} <span className="text-destructive">*</span></Label>
+                    <Input id="title" placeholder={t("submit.titlePlaceholder")} value={title} onChange={(e) => setTitle(e.target.value)} />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="description">Description <span className="text-destructive">*</span></Label>
+                    <Label htmlFor="description">{t("submit.descriptionLabel")} <span className="text-destructive">*</span></Label>
                     <Textarea
                       id="description"
-                      placeholder="Include what happened, when it started, how it affects people, and any safety risk."
+                      placeholder={t("submit.descriptionPlaceholder")}
                       rows={5}
                       value={description}
                       onChange={(e) => setDescription(e.target.value)}
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>Attachments</Label>
+                    <Label>{t("submit.attachments")}</Label>
                     <label className="block cursor-pointer rounded-lg border-2 border-dashed p-6 text-center transition-colors hover:bg-muted/40">
                       <Upload className="mx-auto h-8 w-8 text-muted-foreground" />
-                      <p className="mt-2 text-sm text-muted-foreground">Upload photos or PDFs that show the issue</p>
+                      <p className="mt-2 text-sm text-muted-foreground">{t("submit.uploadHelp")}</p>
                       <span className="mt-3 inline-flex h-8 items-center rounded-md border px-3 text-sm font-medium">
-                        Choose Files
+                        {t("submit.chooseFiles")}
                       </span>
                       <input type="file" multiple accept="image/*,.pdf,application/pdf" className="sr-only" onChange={handleFileChange} />
                     </label>
@@ -353,46 +346,46 @@ export function SubmitClient({
               {step === 3 && (
                 <>
                   <div className="space-y-2">
-                    <Label htmlFor="address">Street Address <span className="text-destructive">*</span></Label>
-                    <Input id="address" placeholder="House/building, road, landmark" value={address} onChange={(e) => setAddress(e.target.value)} />
+                    <Label htmlFor="address">{t("submit.streetAddress")} <span className="text-destructive">*</span></Label>
+                    <Input id="address" placeholder={t("submit.addressPlaceholder")} value={address} onChange={(e) => setAddress(e.target.value)} />
                   </div>
                   <div className="grid gap-4 sm:grid-cols-2">
                     <div className="space-y-2">
-                      <Label htmlFor="area">Area / Neighborhood</Label>
-                      <Input id="area" placeholder="Dhanmondi, Mirpur, Uttara Sector 7" value={area} onChange={(e) => setArea(e.target.value)} />
+                      <Label htmlFor="area">{t("submit.area")}</Label>
+                      <Input id="area" placeholder={t("submit.areaPlaceholder")} value={area} onChange={(e) => setArea(e.target.value)} />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="city">City</Label>
+                      <Label htmlFor="city">{t("submit.city")}</Label>
                       <Input id="city" placeholder="Dhaka" value={city} onChange={(e) => setCity(e.target.value)} />
                     </div>
                   </div>
                   <div className="grid gap-4 sm:grid-cols-2">
                     <div className="space-y-2">
-                      <Label htmlFor="latitude">Latitude</Label>
+                      <Label htmlFor="latitude">{t("submit.latitude")}</Label>
                       <Input id="latitude" inputMode="decimal" placeholder="23.810331" value={latitude} onChange={(e) => setLatitude(e.target.value)} />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="longitude">Longitude</Label>
+                      <Label htmlFor="longitude">{t("submit.longitude")}</Label>
                       <Input id="longitude" inputMode="decimal" placeholder="90.412521" value={longitude} onChange={(e) => setLongitude(e.target.value)} />
                     </div>
                   </div>
                   <div className="flex flex-wrap gap-2">
                     <Button type="button" variant="outline" size="sm" className="gap-2" onClick={handleUseCurrentLocation} disabled={locationLoading}>
                       <LocateFixed className="h-4 w-4" />
-                      {locationLoading ? "Reading location..." : "Use Current Location"}
+                      {locationLoading ? t("submit.readingLocation") : t("submit.useCurrentLocation")}
                     </Button>
                     {hasCoordinates && (
                       <Button type="button" variant="ghost" size="sm" asChild className="gap-2">
                         <a href={`https://www.openstreetmap.org/?mlat=${latitude}&mlon=${longitude}#map=17/${latitude}/${longitude}`} target="_blank" rel="noreferrer">
                           <ExternalLink className="h-4 w-4" />
-                          Open Map
+                          {t("submit.openMap")}
                         </a>
                       </Button>
                     )}
                   </div>
                   {hasCoordinates && (
                     <div className="overflow-hidden rounded-lg border">
-                      <iframe title="Selected complaint location" src={mapSrc} className="h-56 w-full" loading="lazy" />
+                      <iframe title={t("submit.mapTitle")} src={mapSrc} className="h-56 w-full" loading="lazy" />
                     </div>
                   )}
                   <div className="rounded-lg border bg-muted/50 p-4">
@@ -401,9 +394,9 @@ export function SubmitClient({
                         <MapPin className="h-4 w-4 text-primary" />
                       </div>
                       <div className="min-w-0">
-                        <p className="text-sm font-medium">Location preview</p>
-                        <p className="mt-1 text-sm text-muted-foreground">{location || "House 12, Road 7, Uttara Sector 7, Dhaka"}</p>
-                        <p className="mt-2 text-xs text-muted-foreground">The department will use this address and coordinates for field routing.</p>
+                        <p className="text-sm font-medium">{t("submit.locationPreview")}</p>
+                        <p className="mt-1 text-sm text-muted-foreground">{location || t("submit.locationFallback")}</p>
+                        <p className="mt-2 text-xs text-muted-foreground">{t("submit.locationHelp")}</p>
                       </div>
                     </div>
                   </div>
@@ -413,35 +406,35 @@ export function SubmitClient({
               {step === 4 && (
                 <>
                   <div className="space-y-2">
-                    <Label htmlFor="name">Full Name</Label>
+                    <Label htmlFor="name">{t("submit.fullName")}</Label>
                     <Input id="name" value={name} onChange={(e) => setName(e.target.value)} disabled />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="email">Email Address</Label>
+                    <Label htmlFor="email">{t("submit.email")}</Label>
                     <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} disabled />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="phone">Phone Number</Label>
+                    <Label htmlFor="phone">{t("submit.phone")}</Label>
                     <Input id="phone" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} disabled />
                   </div>
                   <div className="mt-4 space-y-2 rounded-lg border bg-muted/50 p-4">
-                    <h4 className="text-sm font-medium">Review Your Complaint</h4>
+                    <h4 className="text-sm font-medium">{t("submit.review")}</h4>
                     <div className="grid gap-1 text-sm">
                       <div className="flex justify-between gap-4">
-                        <span className="text-muted-foreground">Category</span>
+                        <span className="text-muted-foreground">{t("submit.stepCategory")}</span>
                         <span className="text-right font-medium">{selectedCategory?.name || "-"}</span>
                       </div>
                       <div className="flex justify-between gap-4">
-                        <span className="text-muted-foreground">Title</span>
+                        <span className="text-muted-foreground">{t("submit.titleLabel")}</span>
                         <span className="max-w-[260px] truncate text-right font-medium">{title || "-"}</span>
                       </div>
                       <div className="flex justify-between gap-4">
-                        <span className="text-muted-foreground">Location</span>
+                        <span className="text-muted-foreground">{t("submit.stepLocation")}</span>
                         <span className="max-w-[260px] truncate text-right font-medium">{location || "-"}</span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-muted-foreground">Attachments</span>
-                        <span className="font-medium">{files.length} files</span>
+                        <span className="text-muted-foreground">{t("submit.attachments")}</span>
+                        <span className="font-medium">{files.length} {t("submit.files")}</span>
                       </div>
                     </div>
                   </div>
@@ -464,14 +457,14 @@ export function SubmitClient({
               className="gap-1.5"
             >
               <ArrowLeft className="h-4 w-4" />
-              {step === 1 ? "Cancel" : "Back"}
+              {step === 1 ? t("submit.cancel") : t("submit.back")}
             </Button>
 
             {step < 4 ? (
               <div className="flex flex-col items-end gap-2">
                 {error && <p className="max-w-[18rem] text-right text-sm text-destructive">{error}</p>}
                 <Button onClick={nextStep} className="gap-1.5">
-                  Next
+                  {t("submit.next")}
                   <ArrowRight className="h-4 w-4" />
                 </Button>
               </div>
@@ -484,14 +477,12 @@ export function SubmitClient({
                   ) : (
                     <CheckCircle2 className="h-4 w-4" />
                   )}
-                  {isSubmitting ? "Submitting..." : "Submit Complaint"}
+                  {isSubmitting ? t("submit.submitting") : t("home.submitCta")}
                 </Button>
               </div>
             )}
           </div>
         </div>
       </main>
-      <Footer />
-    </div>
   );
 }

@@ -15,18 +15,21 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { LanguageSwitcher } from "@/components/language-switcher";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
+import { useLanguage } from "@/components/language-provider";
 import { cn } from "@/lib/utils";
 import { signOut } from "@/actions/auth";
 
 const publicLinks = [
-  { href: "/", label: "Home", icon: Landmark },
-  { href: "/submit", label: "Submit Complaint", icon: FileText },
-  { href: "/track", label: "Track Status", icon: Search },
+  { href: "/", labelKey: "nav.home", icon: Landmark },
+  { href: "/submit", labelKey: "nav.submit", icon: FileText },
+  { href: "/track", labelKey: "nav.track", icon: Search },
 ];
 
 export function NavbarClient({ user }: { user: any }) {
   const pathname = usePathname();
+  const { t } = useLanguage();
   const [open, setOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
 
@@ -63,7 +66,7 @@ export function NavbarClient({ user }: { user: any }) {
                 )}
               >
                 <Icon className="h-3.5 w-3.5" />
-                {link.label}
+                {t(link.labelKey)}
               </Link>
             );
           })}
@@ -71,6 +74,9 @@ export function NavbarClient({ user }: { user: any }) {
 
         {/* Right side */}
         <div className="flex items-center gap-2">
+          <div className="hidden md:block">
+            <LanguageSwitcher compact />
+          </div>
           <ThemeToggle />
 
           {user ? (
@@ -78,7 +84,7 @@ export function NavbarClient({ user }: { user: any }) {
               <Link href={["admin", "supervisor", "agent"].includes(user.role) ? "/admin" : "/dashboard"}>
                 <Button variant="ghost" size="sm" className="gap-1.5">
                   <LayoutDashboard className="h-3.5 w-3.5" />
-                  Dashboard
+                  {t("nav.dashboard")}
                 </Button>
               </Link>
               <Button
@@ -96,7 +102,7 @@ export function NavbarClient({ user }: { user: any }) {
                 ) : (
                   <LogOut className="h-3.5 w-3.5" />
                 )}
-                {signingOut ? "Signing out..." : "Sign Out"}
+                {signingOut ? t("nav.signingOut") : t("nav.signOut")}
               </Button>
             </div>
           ) : (
@@ -106,12 +112,12 @@ export function NavbarClient({ user }: { user: any }) {
                 className="hidden items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground md:inline-flex"
               >
                 <LogIn className="h-3.5 w-3.5" />
-                Login
+                {t("nav.login")}
               </Link>
               <Link href="/login">
                 <Button size="sm" className="hidden gap-1.5 text-sm md:inline-flex">
                   <LayoutDashboard className="h-3.5 w-3.5" />
-                  Staff Portal
+                  {t("nav.staffPortal")}
                 </Button>
               </Link>
             </>
@@ -122,11 +128,11 @@ export function NavbarClient({ user }: { user: any }) {
             <SheetTrigger asChild className="md:hidden">
               <Button variant="ghost" size="icon" className="h-9 w-9">
                 <Menu className="h-4 w-4" />
-                <span className="sr-only">Open menu</span>
+                <span className="sr-only">{t("nav.openMenu")}</span>
               </Button>
             </SheetTrigger>
             <SheetContent side="right" className="w-72 p-0">
-              <SheetTitle className="sr-only">Navigation Menu</SheetTitle>
+              <SheetTitle className="sr-only">{t("nav.menu")}</SheetTitle>
               <div className="flex h-14 items-center justify-between border-b px-4">
                 <span className="text-lg font-semibold tracking-tight">
                   Civic<span className="text-primary">Desk</span>
@@ -151,7 +157,7 @@ export function NavbarClient({ user }: { user: any }) {
                       )}
                     >
                       <Icon className="h-4 w-4" />
-                      {link.label}
+                      {t(link.labelKey)}
                     </Link>
                   );
                 })}
@@ -165,7 +171,7 @@ export function NavbarClient({ user }: { user: any }) {
                       className="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors text-muted-foreground hover:bg-muted hover:text-foreground"
                     >
                       <LayoutDashboard className="h-4 w-4" />
-                      Dashboard
+                      {t("nav.dashboard")}
                     </Link>
                     <button
                       onClick={() => {
@@ -181,7 +187,7 @@ export function NavbarClient({ user }: { user: any }) {
                       ) : (
                         <LogOut className="h-4 w-4" />
                       )}
-                      {signingOut ? "Signing out..." : "Sign Out"}
+                      {signingOut ? t("nav.signingOut") : t("nav.signOut")}
                     </button>
                   </>
                 ) : (
@@ -192,7 +198,7 @@ export function NavbarClient({ user }: { user: any }) {
                       className="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                     >
                       <LogIn className="h-4 w-4" />
-                      Login
+                      {t("nav.login")}
                     </Link>
                   </>
                 )}

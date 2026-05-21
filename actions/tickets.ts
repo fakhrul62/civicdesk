@@ -453,7 +453,7 @@ export async function updateTicketStatus(input: UpdateTicketStatusInput) {
         where: { id: parsed.data.ticket_id },
         data: {
           status: newStatus,
-          resolved_at: newStatus === "resolved" ? new Date() : undefined,
+          resolved_at: ["resolved", "closed"].includes(newStatus) ? new Date() : null,
         },
       });
 
@@ -605,36 +605,43 @@ export async function assignAgent(input: AssignAgentInput) {
       return { error: "Only admins and supervisors can assign agents" };
     }
 
-    const agent = await prisma.user.findUnique({
-      where: { id: parsed.data.agent_id },
-      select: { full_name: true, role: true },
-    });
-
-    if (!agent || (agent.role !== "agent" && agent.role !== "supervisor")) {
-      return { error: "Selected user is not a valid agent" };
-    }
-
     const ticket = await prisma.ticket.findUnique({
       where: { id: parsed.data.ticket_id },
-      include: { citizen: true },
+      include: {
+        citizen: true,
+        assigned_agent: { select: { full_name: true } },
+      },
     });
 
     if (!ticket) return { error: "Ticket not found" };
 
     const headersList = await headers();
     const ip = headersList.get("x-forwarded-for") || "127.0.0.1";
+    const unassigning = parsed.data.agent_id === "unassigned";
+    const agent = unassigning
+      ? null
+      : await prisma.user.findUnique({
+          where: { id: parsed.data.agent_id },
+          select: { full_name: true, role: true },
+        });
+
+    if (!unassigning && (!agent || !["admin", "agent", "supervisor"].includes(agent.role))) {
+      return { error: "Selected user is not a valid assignee" };
+    }
 
     await prisma.$transaction(async (tx) => {
       await tx.ticket.update({
         where: { id: parsed.data.ticket_id },
-        data: { assigned_to: parsed.data.agent_id },
+        data: { assigned_to: unassigning ? null : parsed.data.agent_id },
       });
 
       await tx.timelineEvent.create({
         data: {
           ticket_id: parsed.data.ticket_id,
           status: ticket.status,
-          description: `Agent ${agent.full_name} assigned`,
+          description: unassigning
+            ? "Ticket unassigned"
+            : `Ticket assigned to ${agent!.full_name}`,
           actor: currentUser.full_name,
         },
       });
@@ -643,23 +650,26 @@ export async function assignAgent(input: AssignAgentInput) {
         data: {
           ticket_id: parsed.data.ticket_id,
           actor_id: authUser.id,
-          action: "Assigned agent",
+          action: unassigning ? "Unassigned ticket" : "Assigned ticket",
           field: "assigned_to",
-          new_value: agent.full_name,
+          old_value: ticket.assigned_agent?.full_name || null,
+          new_value: unassigning ? null : agent!.full_name,
           ip_address: ip,
         },
       });
     });
 
     // Send email notification (non-blocking)
-    sendAgentAssigned({
-      ticketNumber: ticket.ticket_number,
-      citizenName: ticket.citizen.full_name,
-      citizenEmail: ticket.citizen.email,
-      title: ticket.title,
-      category: "",
-      agentName: agent.full_name,
-    }).catch((err) => console.error("Email send error:", err));
+    if (!unassigning && agent) {
+      sendAgentAssigned({
+        ticketNumber: ticket.ticket_number,
+        citizenName: ticket.citizen.full_name,
+        citizenEmail: ticket.citizen.email,
+        title: ticket.title,
+        category: "",
+        agentName: agent.full_name,
+      }).catch((err) => console.error("Email send error:", err));
+    }
 
     revalidatePath(`/admin/tickets/${parsed.data.ticket_id}`);
     revalidatePath("/admin/tickets");
@@ -802,7 +812,8 @@ export async function getTicketAuditLogs(ticketId: string) {
 // ─────────────────────────────────────────────
 export async function getAgents() {
   return prisma.user.findMany({
-    where: { role: { in: ["agent", "supervisor"] }, is_active: true },
-    select: { id: true, full_name: true },
+    where: { role: { in: ["admin", "agent", "supervisor"] }, is_active: true },
+    select: { id: true, full_name: true, role: true },
+    orderBy: [{ role: "asc" }, { full_name: "asc" }],
   });
 }
