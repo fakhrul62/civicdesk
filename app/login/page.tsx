@@ -47,6 +47,7 @@ export default function LoginPage() {
             : result.redirect;
 
         setLoadingMessage("Opening your dashboard...");
+        window.dispatchEvent(new Event("civicdesk:navigation-start"));
         window.location.assign(target);
         return;
       }

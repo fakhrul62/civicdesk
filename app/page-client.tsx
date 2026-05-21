@@ -83,6 +83,7 @@ export function HomeClient({ stats, categories }: HomeClientProps) {
   const handleTrack = () => {
     if (ticketId.trim()) {
       setTracking(true);
+      window.dispatchEvent(new Event("civicdesk:navigation-start"));
       router.push(`/track?id=${encodeURIComponent(ticketId.trim())}`);
     }
   };

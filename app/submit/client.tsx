@@ -192,6 +192,7 @@ export function SubmitClient({
                   disabled={navigatingTo !== null}
                   onClick={() => {
                     setNavigatingTo("track");
+                    window.dispatchEvent(new Event("civicdesk:navigation-start"));
                     router.push(`/track?id=${ticketNumber}`);
                   }}
                 >
@@ -206,6 +207,7 @@ export function SubmitClient({
                   disabled={navigatingTo !== null}
                   onClick={() => {
                     setNavigatingTo("dashboard");
+                    window.dispatchEvent(new Event("civicdesk:navigation-start"));
                     router.push("/dashboard");
                   }}
                 >
@@ -449,7 +451,18 @@ export function SubmitClient({
           </Card>
 
           <div className="mt-6 flex items-center justify-between gap-4">
-            <Button variant="outline" onClick={() => (step === 1 ? router.push("/") : setStep(step - 1))} className="gap-1.5">
+            <Button
+              variant="outline"
+              onClick={() => {
+                if (step === 1) {
+                  window.dispatchEvent(new Event("civicdesk:navigation-start"));
+                  router.push("/");
+                } else {
+                  setStep(step - 1);
+                }
+              }}
+              className="gap-1.5"
+            >
               <ArrowLeft className="h-4 w-4" />
               {step === 1 ? "Cancel" : "Back"}
             </Button>

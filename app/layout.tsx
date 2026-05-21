@@ -3,6 +3,8 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { NavigationLoader } from "@/components/navigation-loader";
+import { Suspense } from "react";
 
 const inter = Inter({
   variable: "--font-sans",
@@ -30,6 +32,9 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <TooltipProvider>
+            <Suspense fallback={null}>
+              <NavigationLoader />
+            </Suspense>
             {children}
           </TooltipProvider>
         </ThemeProvider>
