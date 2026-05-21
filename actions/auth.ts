@@ -81,10 +81,22 @@ export async function signIn(input: SignInInput) {
     const headersList = await headers();
     const ip = headersList.get("x-forwarded-for") || "127.0.0.1";
     const limiter = getLoginLimiter();
-    const { success: allowed } = await limiter.limit(ip);
 
-    if (!allowed) {
-      return { error: "Too many login attempts. Please try again in 15 minutes." };
+    if (limiter) {
+      try {
+        const { success: allowed } = await Promise.race([
+          limiter.limit(ip),
+          new Promise<{ success: true }>((resolve) =>
+            setTimeout(() => resolve({ success: true }), 2500)
+          ),
+        ]);
+
+        if (!allowed) {
+          return { error: "Too many login attempts. Please try again in 15 minutes." };
+        }
+      } catch (error) {
+        console.warn("Login rate limiter unavailable:", error);
+      }
     }
 
     const supabase = await createClient();

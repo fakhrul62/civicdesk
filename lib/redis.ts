@@ -4,7 +4,15 @@ import { Ratelimit } from "@upstash/ratelimit";
 // Lazy initialization — only connect when first used
 let redis: Redis | null = null;
 
+function hasRedisEnv() {
+  return Boolean(process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN);
+}
+
 function getRedis() {
+  if (!hasRedisEnv()) {
+    throw new Error("Upstash Redis environment variables are not configured");
+  }
+
   if (!redis) {
     redis = new Redis({
       url: process.env.UPSTASH_REDIS_REST_URL!,
@@ -19,6 +27,8 @@ function getRedis() {
  * Allows 5 submissions per hour per IP address.
  */
 export function getSubmissionLimiter() {
+  if (!hasRedisEnv()) return null;
+
   return new Ratelimit({
     redis: getRedis(),
     limiter: Ratelimit.slidingWindow(5, "1 h"),
@@ -32,6 +42,8 @@ export function getSubmissionLimiter() {
  * Allows 10 attempts per 15 minutes per IP address.
  */
 export function getLoginLimiter() {
+  if (!hasRedisEnv()) return null;
+
   return new Ratelimit({
     redis: getRedis(),
     limiter: Ratelimit.slidingWindow(10, "15 m"),
@@ -45,6 +57,8 @@ export function getLoginLimiter() {
  * Allows 100 requests per minute per IP address.
  */
 export function getApiLimiter() {
+  if (!hasRedisEnv()) return null;
+
   return new Ratelimit({
     redis: getRedis(),
     limiter: Ratelimit.slidingWindow(100, "1 m"),
@@ -61,12 +75,27 @@ export async function cacheGetOrSet<T>(
   fetcher: () => Promise<T>,
   ttlSeconds: number = 60
 ): Promise<T> {
-  const r = getRedis();
-  const cached = await r.get<T>(key);
-  if (cached !== null) return cached;
+  if (hasRedisEnv()) {
+    try {
+      const r = getRedis();
+      const cached = await r.get<T>(key);
+      if (cached !== null) return cached;
+    } catch (error) {
+      console.warn(`Redis cache read unavailable for ${key}:`, error);
+    }
+  }
 
   const fresh = await fetcher();
-  await r.set(key, fresh, { ex: ttlSeconds });
+
+  if (hasRedisEnv()) {
+    try {
+      const r = getRedis();
+      await r.set(key, fresh, { ex: ttlSeconds });
+    } catch (error) {
+      console.warn(`Redis cache write unavailable for ${key}:`, error);
+    }
+  }
+
   return fresh;
 }
 
@@ -74,6 +103,12 @@ export async function cacheGetOrSet<T>(
  * Invalidate cache by key or pattern
  */
 export async function cacheInvalidate(key: string) {
-  const r = getRedis();
-  await r.del(key);
+  if (!hasRedisEnv()) return;
+
+  try {
+    const r = getRedis();
+    await r.del(key);
+  } catch (error) {
+    console.warn(`Redis cache invalidation unavailable for ${key}:`, error);
+  }
 }

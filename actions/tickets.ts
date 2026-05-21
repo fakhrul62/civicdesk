@@ -80,6 +80,24 @@ function formString(formData: FormData, key: string) {
   return typeof value === "string" ? value.trim() : "";
 }
 
+async function isSubmissionAllowed(ip: string) {
+  const limiter = getSubmissionLimiter();
+  if (!limiter) return true;
+
+  try {
+    const { success } = await Promise.race([
+      limiter.limit(ip),
+      new Promise<{ success: true }>((resolve) =>
+        setTimeout(() => resolve({ success: true }), 2500)
+      ),
+    ]);
+    return success;
+  } catch (error) {
+    console.warn("Submission rate limiter unavailable:", error);
+    return true;
+  }
+}
+
 // ─────────────────────────────────────────────
 // CREATE TICKET
 // ─────────────────────────────────────────────
@@ -94,8 +112,7 @@ export async function createTicket(input: CreateTicketInput) {
     // Rate limiting
     const headersList = await headers();
     const ip = headersList.get("x-forwarded-for") || "127.0.0.1";
-    const limiter = getSubmissionLimiter();
-    const { success: allowed } = await limiter.limit(ip);
+    const allowed = await isSubmissionAllowed(ip);
 
     if (!allowed) {
       return { error: "You've submitted too many complaints. Please try again in an hour." };
@@ -240,8 +257,7 @@ export async function createTicketFromForm(formData: FormData) {
   try {
     const headersList = await headers();
     const ip = headersList.get("x-forwarded-for") || "127.0.0.1";
-    const limiter = getSubmissionLimiter();
-    const { success: allowed } = await limiter.limit(ip);
+    const allowed = await isSubmissionAllowed(ip);
 
     if (!allowed) {
       return { error: "You've submitted too many complaints. Please try again in an hour." };

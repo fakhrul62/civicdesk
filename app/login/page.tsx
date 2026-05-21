@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import {
   Landmark,
   Mail,
@@ -20,17 +19,18 @@ import { Separator } from "@/components/ui/separator";
 import { signIn } from "@/actions/auth";
 
 export default function LoginPage() {
-  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [loadingMessage, setLoadingMessage] = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     setLoading(true);
+    setLoadingMessage("Checking your account...");
 
     try {
       const result = await signIn({ email, password });
@@ -38,6 +38,7 @@ export default function LoginPage() {
       if (result.error) {
         setError(result.error);
         setLoading(false);
+        setLoadingMessage("");
       } else if (result.redirect) {
         const requestedRedirect = new URLSearchParams(window.location.search).get("redirect");
         const target =
@@ -45,18 +46,31 @@ export default function LoginPage() {
             ? requestedRedirect
             : result.redirect;
 
-        router.replace(target);
-        router.refresh();
+        setLoadingMessage("Opening your dashboard...");
+        window.location.assign(target);
         return;
       }
     } catch {
       setError("An unexpected error occurred");
       setLoading(false);
+      setLoadingMessage("");
     }
   };
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-muted/30 px-4">
+      {loading && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 px-4 backdrop-blur-sm">
+          <div className="w-full max-w-xs rounded-lg border bg-card p-6 text-center shadow-lg">
+            <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-primary/25 border-t-primary" />
+            <p className="mt-4 text-sm font-medium">{loadingMessage || "Loading..."}</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Keep this page open while CivicDesk loads the next screen.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Background grid */}
       <div className="pointer-events-none fixed inset-0 bg-[linear-gradient(to_right,var(--color-border)_1px,transparent_1px),linear-gradient(to_bottom,var(--color-border)_1px,transparent_1px)] bg-[size:4rem_4rem] opacity-20" />
 
