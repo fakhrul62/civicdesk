@@ -3,6 +3,7 @@
 import { prisma } from "@/lib/prisma";
 import { createClient } from "@/lib/supabase/server";
 import { createClient as createSupabaseAdminClient } from "@supabase/supabase-js";
+import { getAppSession } from "@/lib/auth-session";
 import { getSubmissionLimiter } from "@/lib/redis";
 import {
   createTicketSchema,
@@ -98,6 +99,15 @@ async function isSubmissionAllowed(ip: string) {
   }
 }
 
+async function getAuthenticatedUserId() {
+  const session = await getAppSession();
+  if (session) return session.userId;
+
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  return user?.id || null;
+}
+
 // ─────────────────────────────────────────────
 // CREATE TICKET
 // ─────────────────────────────────────────────
@@ -119,10 +129,9 @@ export async function createTicket(input: CreateTicketInput) {
     }
 
     // Get current user
-    const supabase = await createClient();
-    const { data: { user: authUser } } = await supabase.auth.getUser();
+    const authUserId = await getAuthenticatedUserId();
 
-    if (!authUser) {
+    if (!authUserId) {
       return { error: "You must be logged in to submit a complaint" };
     }
 
@@ -150,7 +159,7 @@ export async function createTicket(input: CreateTicketInput) {
           title: parsed.data.title,
           description: parsed.data.description,
           category_id: parsed.data.category_id,
-          citizen_id: authUser.id,
+          citizen_id: authUserId,
           priority,
           location: parsed.data.location,
           latitude: parsed.data.latitude,
@@ -178,7 +187,7 @@ export async function createTicket(input: CreateTicketInput) {
       await tx.auditLog.create({
         data: {
           ticket_id: newTicket.id,
-          actor_id: authUser.id,
+          actor_id: authUserId,
           action: "Ticket created",
           field: "status",
           new_value: "Submitted",
@@ -218,6 +227,7 @@ export async function createTicketFromForm(formData: FormData) {
   const title = formString(formData, "title");
   const description = formString(formData, "description");
   const location = formString(formData, "location");
+  const phone = formString(formData, "phone");
   const latitudeValue = formString(formData, "latitude");
   const longitudeValue = formString(formData, "longitude");
   const latitude = latitudeValue ? Number(latitudeValue) : undefined;
@@ -263,15 +273,14 @@ export async function createTicketFromForm(formData: FormData) {
       return { error: "You've submitted too many complaints. Please try again in an hour." };
     }
 
-    const supabase = await createClient();
-    const { data: { user: authUser } } = await supabase.auth.getUser();
+    const authUserId = await getAuthenticatedUserId();
 
-    if (!authUser) {
+    if (!authUserId) {
       return { error: "You must be logged in to submit a complaint" };
     }
 
     const user = await prisma.user.findUnique({
-      where: { id: authUser.id },
+      where: { id: authUserId },
       select: { id: true, full_name: true, email: true },
     });
 
@@ -292,13 +301,20 @@ export async function createTicketFromForm(formData: FormData) {
     const dueDate = calculateDueDate(category.sla_hours);
 
     const ticket = await prisma.$transaction(async (tx) => {
+      if (phone) {
+        await tx.user.update({
+          where: { id: authUserId },
+          data: { phone },
+        });
+      }
+
       const newTicket = await tx.ticket.create({
         data: {
           ticket_number: ticketNumber,
           title: parsed.data.title,
           description: parsed.data.description,
           category_id: parsed.data.category_id,
-          citizen_id: authUser.id,
+          citizen_id: authUserId,
           priority,
           location: parsed.data.location,
           latitude: parsed.data.latitude,
@@ -324,7 +340,7 @@ export async function createTicketFromForm(formData: FormData) {
       await tx.auditLog.create({
         data: {
           ticket_id: newTicket.id,
-          actor_id: authUser.id,
+          actor_id: authUserId,
           action: "Ticket created",
           field: "status",
           new_value: "Submitted",
@@ -336,35 +352,39 @@ export async function createTicketFromForm(formData: FormData) {
     });
 
     if (files.length > 0) {
-      const storage = await ensureAttachmentBucket();
-      const uploaded = [];
+      try {
+        const storage = await ensureAttachmentBucket();
+        const uploaded = [];
 
-      for (const file of files) {
-        const safeName = cleanFileName(file.name || "attachment");
-        const path = `${ticket.id}/${crypto.randomUUID()}-${safeName}`;
-        const body = Buffer.from(await file.arrayBuffer());
-        const { error } = await storage.storage
-          .from(ATTACHMENT_BUCKET)
-          .upload(path, body, {
-            contentType: file.type,
-            upsert: false,
+        for (const file of files) {
+          const safeName = cleanFileName(file.name || "attachment");
+          const path = `${ticket.id}/${crypto.randomUUID()}-${safeName}`;
+          const body = Buffer.from(await file.arrayBuffer());
+          const { error } = await storage.storage
+            .from(ATTACHMENT_BUCKET)
+            .upload(path, body, {
+              contentType: file.type,
+              upsert: false,
+            });
+
+          if (error) {
+            throw error;
+          }
+
+          const { data } = storage.storage.from(ATTACHMENT_BUCKET).getPublicUrl(path);
+          uploaded.push({
+            ticket_id: ticket.id,
+            file_name: file.name || safeName,
+            file_url: data.publicUrl,
+            file_size: file.size,
+            mime_type: file.type,
           });
-
-        if (error) {
-          throw error;
         }
 
-        const { data } = storage.storage.from(ATTACHMENT_BUCKET).getPublicUrl(path);
-        uploaded.push({
-          ticket_id: ticket.id,
-          file_name: file.name || safeName,
-          file_url: data.publicUrl,
-          file_size: file.size,
-          mime_type: file.type,
-        });
+        await prisma.attachment.createMany({ data: uploaded });
+      } catch (error) {
+        console.error("Attachment upload failed after ticket creation:", error);
       }
-
-      await prisma.attachment.createMany({ data: uploaded });
     }
 
     sendTicketConfirmation({

@@ -48,6 +48,9 @@ export default function SignupPage() {
 
       if (result.error) {
         setError(result.error);
+      } else if (result.redirect) {
+        window.dispatchEvent(new Event("civicdesk:navigation-start"));
+        router.push(result.redirect);
       } else {
         setSuccess(true);
       }

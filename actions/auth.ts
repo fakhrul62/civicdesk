@@ -4,6 +4,8 @@ import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { signUpSchema, signInSchema, type SignUpInput, type SignInInput } from "@/lib/validations";
 import { getLoginLimiter } from "@/lib/redis";
+import { clearAppSession, createAppSession, getAppSession } from "@/lib/auth-session";
+import bcrypt from "bcryptjs";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
@@ -20,43 +22,63 @@ export async function signUp(input: SignUpInput) {
   }
 
   const { full_name, email, password, phone } = parsed.data;
+  const normalizedEmail = email.toLowerCase().trim();
 
   try {
-    const supabase = await createClient();
-
-    // Register with Supabase Auth
-    const { data: authData, error: authError } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: {
-          full_name,
-          role: "citizen",
-        },
-      },
+    const existingUser = await prisma.user.findUnique({
+      where: { email: normalizedEmail },
+      select: { id: true },
     });
 
-    if (authError) {
-      return { error: authError.message };
+    if (existingUser) {
+      return { error: "An account with this email already exists." };
     }
 
-    if (!authData.user) {
-      return { error: "Failed to create user account" };
+    let authUserId: string | undefined;
+
+    try {
+      const supabase = await createClient();
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: normalizedEmail,
+        password,
+        options: {
+          data: {
+            full_name,
+            role: "citizen",
+          },
+        },
+      });
+
+      if (!authError) {
+        authUserId = authData.user?.id;
+      } else {
+        console.warn("Supabase sign up unavailable, using local account:", authError.message);
+      }
+    } catch (error) {
+      console.warn("Supabase sign up unavailable, using local account:", error);
     }
 
-    // Create user record in our database
-    await prisma.user.create({
+    const passwordHash = await bcrypt.hash(password, 12);
+    const user = await prisma.user.create({
       data: {
-        id: authData.user.id,
-        email,
-        password_hash: "", // Supabase manages passwords
+        id: authUserId || crypto.randomUUID(),
+        email: normalizedEmail,
+        password_hash: passwordHash,
         full_name,
         phone: phone || null,
         role: "citizen",
       },
+      select: { id: true, email: true, role: true },
     });
 
-    return { success: true, message: "Account created successfully! Please check your email to verify." };
+    await createAppSession({
+      sub: user.id,
+      email: user.email,
+      role: user.role,
+    });
+
+    revalidatePath("/", "layout");
+    return { success: true, redirect: "/dashboard", message: "Account created successfully." };
   } catch (err: any) {
     console.error("Sign up error:", err);
     return { error: "An unexpected error occurred. Please try again." };
@@ -75,6 +97,7 @@ export async function signIn(input: SignInInput) {
   }
 
   const { email, password } = parsed.data;
+  const normalizedEmail = email.toLowerCase().trim();
 
   try {
     // Rate limiting
@@ -99,60 +122,105 @@ export async function signIn(input: SignInInput) {
       }
     }
 
-    const supabase = await createClient();
-
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-
-    if (error) {
-      return { error: "Invalid email or password" };
-    }
-
-    const fullName =
-      data.user.user_metadata?.full_name ||
-      data.user.email?.split("@")[0] ||
-      "CivicDesk User";
-
-    const metadataRole = data.user.user_metadata?.role as
-      | "citizen"
-      | "agent"
-      | "supervisor"
-      | "admin"
-      | undefined;
-
-    // Keep the app database in sync with Supabase Auth so verified users can log in.
-    const user = await prisma.user.upsert({
-      where: { id: data.user.id },
-      update: {
-        email: data.user.email || email,
-        full_name: fullName,
+    const localUser = await prisma.user.findUnique({
+      where: { email: normalizedEmail },
+      select: {
+        id: true,
+        email: true,
+        password_hash: true,
+        role: true,
         is_active: true,
       },
-      create: {
-        id: data.user.id,
-        email: data.user.email || email,
-        password_hash: "",
-        full_name: fullName,
-        role: metadataRole || "citizen",
-      },
-      select: { role: true, is_active: true },
     });
 
-    if (!user.is_active) {
-      await supabase.auth.signOut();
-      return { error: "This account is disabled. Contact an administrator." };
+    if (localUser?.password_hash) {
+      const passwordMatches = await bcrypt.compare(password, localUser.password_hash);
+
+      if (!passwordMatches) {
+        return { error: "Invalid email or password" };
+      }
+
+      if (!localUser.is_active) {
+        return { error: "This account is disabled. Contact an administrator." };
+      }
+
+      await createAppSession({
+        sub: localUser.id,
+        email: localUser.email,
+        role: localUser.role,
+      });
+
+      revalidatePath("/", "layout");
+
+      if (["admin", "supervisor", "agent"].includes(localUser.role)) {
+        return { success: true, redirect: "/admin" };
+      }
+
+      return { success: true, redirect: "/dashboard" };
     }
 
-    revalidatePath("/", "layout");
+    try {
+      const supabase = await createClient();
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: normalizedEmail,
+        password,
+      });
 
-    // Redirect based on role
-    if (user?.role === "admin" || user?.role === "supervisor" || user?.role === "agent") {
-      return { success: true, redirect: "/admin" };
+      if (error) {
+        return { error: "Invalid email or password" };
+      }
+
+      const fullName =
+        data.user.user_metadata?.full_name ||
+        data.user.email?.split("@")[0] ||
+        "CivicDesk User";
+
+      const metadataRole = data.user.user_metadata?.role as
+        | "citizen"
+        | "agent"
+        | "supervisor"
+        | "admin"
+        | undefined;
+
+      const user = await prisma.user.upsert({
+        where: { id: data.user.id },
+        update: {
+          email: data.user.email || normalizedEmail,
+          full_name: fullName,
+          is_active: true,
+        },
+        create: {
+          id: data.user.id,
+          email: data.user.email || normalizedEmail,
+          password_hash: "",
+          full_name: fullName,
+          role: metadataRole || "citizen",
+        },
+        select: { id: true, email: true, role: true, is_active: true },
+      });
+
+      if (!user.is_active) {
+        await supabase.auth.signOut();
+        return { error: "This account is disabled. Contact an administrator." };
+      }
+
+      await createAppSession({
+        sub: user.id,
+        email: user.email,
+        role: user.role,
+      });
+
+      revalidatePath("/", "layout");
+
+      if (["admin", "supervisor", "agent"].includes(user.role)) {
+        return { success: true, redirect: "/admin" };
+      }
+
+      return { success: true, redirect: "/dashboard" };
+    } catch (error) {
+      console.error("Supabase sign in fallback failed:", error);
+      return { error: "Invalid email or password" };
     }
-
-    return { success: true, redirect: "/dashboard" };
   } catch (err: any) {
     console.error("Sign in error:", err);
     return { error: "An unexpected error occurred. Please try again." };
@@ -164,8 +232,13 @@ export async function signIn(input: SignInInput) {
 // ─────────────────────────────────────────────
 
 export async function signOut() {
-  const supabase = await createClient();
-  await supabase.auth.signOut();
+  await clearAppSession();
+  try {
+    const supabase = await createClient();
+    await supabase.auth.signOut();
+  } catch (error) {
+    console.warn("Supabase sign out skipped:", error);
+  }
   revalidatePath("/", "layout");
   redirect("/");
 }
@@ -176,6 +249,25 @@ export async function signOut() {
 
 export async function getCurrentUser() {
   try {
+    const session = await getAppSession();
+
+    if (session) {
+      const user = await prisma.user.findUnique({
+        where: { id: session.userId },
+        select: {
+          id: true,
+          email: true,
+          full_name: true,
+          phone: true,
+          role: true,
+          avatar_url: true,
+          created_at: true,
+        },
+      });
+
+      if (user) return user;
+    }
+
     const supabase = await createClient();
     const { data: { user: authUser } } = await supabase.auth.getUser();
 
