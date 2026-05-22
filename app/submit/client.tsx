@@ -46,6 +46,21 @@ type SubmitUser = {
   phone: string | null;
 };
 
+const MAX_ATTACHMENTS = 5;
+const MAX_ATTACHMENT_SIZE = 5 * 1024 * 1024;
+const MAX_TOTAL_ATTACHMENT_SIZE = MAX_ATTACHMENTS * MAX_ATTACHMENT_SIZE;
+const ALLOWED_ATTACHMENT_TYPES = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/gif",
+  "application/pdf",
+]);
+
+function formatFileSize(bytes: number) {
+  return `${(bytes / (1024 * 1024)).toFixed(1)}MB`;
+}
+
 export function SubmitClient({
   user,
   categories,
@@ -92,6 +107,7 @@ export function SubmitClient({
   const mapSrc = hasCoordinates
     ? `https://www.openstreetmap.org/export/embed.html?bbox=${Number(longitude) - 0.01}%2C${Number(latitude) - 0.01}%2C${Number(longitude) + 0.01}%2C${Number(latitude) + 0.01}&layer=mapnik&marker=${latitude}%2C${longitude}`
     : "";
+  const totalAttachmentSize = files.reduce((total, file) => total + file.size, 0);
 
   const nextStep = () => {
     setError("");
@@ -112,7 +128,37 @@ export function SubmitClient({
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const selected = Array.from(event.target.files || []);
-    setFiles((prev) => [...prev, ...selected].slice(0, 5));
+    setError("");
+
+    const invalidType = selected.find((file) => !ALLOWED_ATTACHMENT_TYPES.has(file.type));
+    if (invalidType) {
+      setError(`${invalidType.name} must be an image or PDF file.`);
+      event.target.value = "";
+      return;
+    }
+
+    const oversized = selected.find((file) => file.size > MAX_ATTACHMENT_SIZE);
+    if (oversized) {
+      setError(`${oversized.name} is larger than ${formatFileSize(MAX_ATTACHMENT_SIZE)}.`);
+      event.target.value = "";
+      return;
+    }
+
+    setFiles((prev) => {
+      const next = [...prev, ...selected].slice(0, MAX_ATTACHMENTS);
+      const totalSize = next.reduce((total, file) => total + file.size, 0);
+
+      if (totalSize > MAX_TOTAL_ATTACHMENT_SIZE) {
+        setError(`Attachments can be up to ${formatFileSize(MAX_TOTAL_ATTACHMENT_SIZE)} total.`);
+        return prev;
+      }
+
+      if (prev.length + selected.length > MAX_ATTACHMENTS) {
+        setError(`You can upload up to ${MAX_ATTACHMENTS} files.`);
+      }
+
+      return next;
+    });
     event.target.value = "";
   };
 
@@ -148,6 +194,18 @@ export function SubmitClient({
       return;
     }
 
+    if (files.some((file) => file.size > MAX_ATTACHMENT_SIZE)) {
+      setError(`Each attachment must be ${formatFileSize(MAX_ATTACHMENT_SIZE)} or smaller.`);
+      setIsSubmitting(false);
+      return;
+    }
+
+    if (totalAttachmentSize > MAX_TOTAL_ATTACHMENT_SIZE) {
+      setError(`Attachments can be up to ${formatFileSize(MAX_TOTAL_ATTACHMENT_SIZE)} total.`);
+      setIsSubmitting(false);
+      return;
+    }
+
     const formData = new FormData();
     formData.set("category_id", selectedCategory.id);
     formData.set("title", title);
@@ -158,14 +216,19 @@ export function SubmitClient({
     if (longitude) formData.set("longitude", longitude);
     files.forEach((file) => formData.append("attachments", file));
 
-    const result = await createTicketFromForm(formData);
+    try {
+      const result = await createTicketFromForm(formData);
 
-    if (result.error) {
-      setError(result.error);
-      setIsSubmitting(false);
-    } else if (result.success && result.ticketNumber) {
-      setTicketNumber(result.ticketNumber);
-      setSubmitted(true);
+      if (result.error) {
+        setError(result.error);
+      } else if (result.success && result.ticketNumber) {
+        setTicketNumber(result.ticketNumber);
+        setSubmitted(true);
+      }
+    } catch (error) {
+      console.error("Submit complaint failed:", error);
+      setError("The complaint could not be submitted. Remove large attachments and try again.");
+    } finally {
       setIsSubmitting(false);
     }
   };
@@ -324,6 +387,9 @@ export function SubmitClient({
                     <label className="block cursor-pointer rounded-lg border-2 border-dashed p-6 text-center transition-colors hover:bg-muted/40">
                       <Upload className="mx-auto h-8 w-8 text-muted-foreground" />
                       <p className="mt-2 text-sm text-muted-foreground">{t("submit.uploadHelp")}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        Up to {MAX_ATTACHMENTS} files, {formatFileSize(MAX_ATTACHMENT_SIZE)} each.
+                      </p>
                       <span className="mt-3 inline-flex h-8 items-center rounded-md border px-3 text-sm font-medium">
                         {t("submit.chooseFiles")}
                       </span>
@@ -333,7 +399,7 @@ export function SubmitClient({
                       <div className="flex flex-wrap gap-2">
                         {files.map((file, i) => (
                           <Badge key={`${file.name}-${i}`} variant="secondary" className="gap-1.5 pr-1">
-                            <span className="max-w-[14rem] truncate">{file.name}</span>
+                            <span className="max-w-[14rem] truncate">{file.name} ({formatFileSize(file.size)})</span>
                             <button
                               type="button"
                               onClick={() => setFiles((prev) => prev.filter((_, idx) => idx !== i))}
