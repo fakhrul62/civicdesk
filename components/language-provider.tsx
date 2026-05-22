@@ -10,6 +10,224 @@ type LanguageContextValue = {
   t: (key: string) => string;
 };
 
+const textNodeOriginals = new WeakMap<Text, string>();
+
+const attributeOriginals = new WeakMap<Element, Record<string, string>>();
+
+const domTranslations: Record<string, string> = {
+  "Toggle theme": "থিম পরিবর্তন করুন",
+  Close: "বন্ধ করুন",
+  "Quick Links": "দ্রুত লিংক",
+  "Submit a Complaint": "অভিযোগ জমা দিন",
+  "Track Your Complaint": "অভিযোগ ট্র্যাক করুন",
+  "Citizen Dashboard": "নাগরিক ড্যাশবোর্ড",
+  Resources: "রিসোর্স",
+  "Help Center": "সহায়তা কেন্দ্র",
+  "Privacy Policy": "গোপনীয়তা নীতি",
+  "Terms of Service": "সেবার শর্তাবলি",
+  Contact: "যোগাযোগ",
+  "Civic Service Center": "নাগরিক সেবা কেন্দ্র",
+  "Government complaint management portal. Submit, track, and resolve civic issues transparently.":
+    "সরকারি অভিযোগ ব্যবস্থাপনা পোর্টাল। স্বচ্ছভাবে অভিযোগ জমা, ট্র্যাক ও সমাধান করুন।",
+  "Government of the People. All rights reserved.": "জনগণের সরকার। সর্বস্বত্ব সংরক্ষিত।",
+  "Welcome back,": "আবার স্বাগতম,",
+  "New Complaint": "নতুন অভিযোগ",
+  "Total Complaints": "মোট অভিযোগ",
+  "In Progress": "চলমান",
+  Resolved: "সমাধান হয়েছে",
+  Overdue: "সময় পেরিয়েছে",
+  "My Complaints": "আমার অভিযোগ",
+  "No complaints found matching your search.": "আপনার অনুসন্ধানের সাথে কোনো অভিযোগ পাওয়া যায়নি।",
+  "Search complaints...": "অভিযোগ খুঁজুন...",
+  "Ticket Not Found": "টিকিট পাওয়া যায়নি",
+  "Status Progress": "অবস্থার অগ্রগতি",
+  "Activity Timeline": "কার্যক্রমের টাইমলাইন",
+  "No timeline activity found.": "কোনো টাইমলাইন কার্যক্রম পাওয়া যায়নি।",
+  "Public Messages": "পাবলিক বার্তা",
+  "No public messages yet.": "এখনো কোনো পাবলিক বার্তা নেই।",
+  Attachments: "সংযুক্তি",
+  "Complaint Not Found": "অভিযোগ পাওয়া যায়নি",
+  Messages: "বার্তা",
+  Timeline: "টাইমলাইন",
+  Details: "বিস্তারিত",
+  Category: "বিভাগ",
+  Location: "লোকেশন",
+  Submitted: "জমা হয়েছে",
+  "Due Date": "শেষ সময়",
+  "Last Updated": "সর্বশেষ আপডেট",
+  "Not specified": "উল্লেখ করা হয়নি",
+  "Not set": "সেট করা হয়নি",
+  "Open map": "ম্যাপ খুলুন",
+  "No attachments submitted.": "কোনো সংযুক্তি জমা দেওয়া হয়নি।",
+  Dashboard: "ড্যাশবোর্ড",
+  "Overview of all civic complaints and system performance.":
+    "সব নাগরিক অভিযোগ ও সিস্টেম পারফরম্যান্সের সারসংক্ষেপ।",
+  "Total Tickets": "মোট টিকিট",
+  "Open Tickets": "খোলা টিকিট",
+  "Recent Tickets": "সাম্প্রতিক টিকিট",
+  "View All": "সব দেখুন",
+  "Status Breakdown": "অবস্থার বিভাজন",
+  "No ticket data yet.": "এখনো কোনো টিকিট ডেটা নেই।",
+  "Agent Load": "এজেন্টের কাজের চাপ",
+  "No agents or supervisors have been added yet.": "এখনো কোনো এজেন্ট বা সুপারভাইজার যোগ করা হয়নি।",
+  Performance: "পারফরম্যান্স",
+  "Avg. Resolution": "গড় সমাধান",
+  "SLA Compliance": "SLA অনুসরণ",
+  Tickets: "টিকিট",
+  "Manage all citizen complaints and service requests.": "সব নাগরিক অভিযোগ ও সেবা অনুরোধ পরিচালনা করুন।",
+  "All Statuses": "সব অবস্থা",
+  "All Priorities": "সব অগ্রাধিকার",
+  Ticket: "টিকিট",
+  Citizen: "নাগরিক",
+  Status: "অবস্থা",
+  Priority: "অগ্রাধিকার",
+  Agent: "এজেন্ট",
+  Updated: "আপডেট হয়েছে",
+  Unassigned: "অ্যাসাইন করা হয়নি",
+  "Under Review": "পর্যালোচনায়",
+  "Pending Citizen": "নাগরিকের অপেক্ষায়",
+  Closed: "বন্ধ",
+  Critical: "জরুরি",
+  High: "উচ্চ",
+  Medium: "মাঝারি",
+  Low: "নিম্ন",
+  "Users & Staff": "ব্যবহারকারী ও স্টাফ",
+  "Super admins can promote users, assign staff roles, and monitor workload.":
+    "সুপার অ্যাডমিন ব্যবহারকারীকে উন্নীত করতে, স্টাফ ভূমিকা দিতে এবং কাজের চাপ দেখতে পারেন।",
+  "Super Admin Access": "সুপার অ্যাডমিন অ্যাক্সেস",
+  "Active Staff": "সক্রিয় স্টাফ",
+  "Total Resolved": "মোট সমাধান",
+  "Search users...": "ব্যবহারকারী খুঁজুন...",
+  Open: "খোলা",
+  Active: "সক্রিয়",
+  Workload: "কাজের চাপ",
+  "All Users": "সব ব্যবহারকারী",
+  "Change a citizen into an agent, supervisor, or admin.": "নাগরিককে এজেন্ট, সুপারভাইজার বা অ্যাডমিন বানান।",
+  "Super Admin": "সুপার অ্যাডমিন",
+  Saving: "সেভ হচ্ছে",
+  "Saving...": "সেভ হচ্ছে...",
+  Inactive: "নিষ্ক্রিয়",
+  Analytics: "অ্যানালিটিক্স",
+  "Last year": "গত বছর",
+  "Tickets by Category": "বিভাগ অনুযায়ী টিকিট",
+  "Resolution Time": "সমাধানের সময়",
+  "Monthly Ticket Volume": "মাসিক টিকিট সংখ্যা",
+  "SLA Compliance Trend": "SLA অনুসরণের প্রবণতা",
+  "Met SLA": "SLA পূরণ",
+  Breached: "লঙ্ঘিত",
+  "Department Performance": "বিভাগের পারফরম্যান্স",
+  Department: "বিভাগ",
+  "Avg. Hours": "গড় ঘণ্টা",
+  "SLA %": "SLA %",
+  "Audit Log": "অডিট লগ",
+  "All Actions": "সব কার্যক্রম",
+  "Ticket Created": "টিকিট তৈরি",
+  "Status Changed": "অবস্থা পরিবর্তন",
+  "Assigned Agent": "এজেন্ট অ্যাসাইন",
+  "Priority Changed": "অগ্রাধিকার পরিবর্তন",
+  Settings: "সেটিংস",
+  "Department Categories": "বিভাগীয় ক্যাটাগরি",
+  "Default Priority": "ডিফল্ট অগ্রাধিকার",
+  "SLA Hours": "SLA ঘণ্টা",
+  "SLA Configuration": "SLA কনফিগারেশন",
+  "Default SLA Timers": "ডিফল্ট SLA সময়",
+  "Critical Priority (hours)": "জরুরি অগ্রাধিকার (ঘণ্টা)",
+  "High Priority (hours)": "উচ্চ অগ্রাধিকার (ঘণ্টা)",
+  "Medium Priority (hours)": "মাঝারি অগ্রাধিকার (ঘণ্টা)",
+  "Low Priority (hours)": "নিম্ন অগ্রাধিকার (ঘণ্টা)",
+  "Escalation Rules": "এস্কেলেশন নিয়ম",
+  "Auto-escalate after breach (minutes)": "লঙ্ঘনের পর অটো-এস্কেলেট (মিনিট)",
+  "Send warning before breach (minutes)": "লঙ্ঘনের আগে সতর্কতা পাঠান (মিনিট)",
+  "Escalation target": "এস্কেলেশন লক্ষ্য",
+  Supervisor: "সুপারভাইজার",
+  Admin: "অ্যাডমিন",
+  "Email Templates": "ইমেইল টেমপ্লেট",
+  "Organization Info": "প্রতিষ্ঠানের তথ্য",
+  "Organization Name": "প্রতিষ্ঠানের নাম",
+  "Support Email": "সহায়তা ইমেইল",
+  "Phone Number": "ফোন নম্বর",
+  Appearance: "চেহারা",
+  "Accent Color": "অ্যাকসেন্ট রং",
+  Logo: "লোগো",
+  "Account Created!": "অ্যাকাউন্ট তৈরি হয়েছে!",
+  "Please check your email to verify your account, then you can log in and start submitting complaints.":
+    "আপনার অ্যাকাউন্ট প্রস্তুত। এখন লগইন করে অভিযোগ জমা দিতে পারবেন।",
+  "Go to Login": "লগইনে যান",
+  "Join CivicDesk": "CivicDesk-এ যোগ দিন",
+  "Create an account to submit and track your civic complaints":
+    "আপনার নাগরিক অভিযোগ জমা ও ট্র্যাক করতে অ্যাকাউন্ট তৈরি করুন",
+  "Full Name": "পূর্ণ নাম",
+  "Email Address": "ইমেইল ঠিকানা",
+  "Password": "পাসওয়ার্ড",
+  "Must be at least 8 characters with 1 uppercase letter and 1 number.":
+    "কমপক্ষে ৮ অক্ষর, ১টি বড় হাতের অক্ষর ও ১টি সংখ্যা থাকতে হবে।",
+  "Create Account": "অ্যাকাউন্ট তৈরি করুন",
+  "Creating account...": "অ্যাকাউন্ট তৈরি হচ্ছে...",
+  "Already have an account?": "ইতিমধ্যে অ্যাকাউন্ট আছে?",
+  "Sign in": "সাইন ইন",
+  "Back to homepage": "হোমপেজে ফিরে যান",
+  "Your full name": "আপনার পূর্ণ নাম",
+  "Min 8 chars, 1 uppercase, 1 number": "কমপক্ষে ৮ অক্ষর, ১টি বড় হাতের অক্ষর, ১টি সংখ্যা",
+};
+
+function translateExactText(value: string) {
+  const trimmed = value.trim();
+  if (!trimmed) return value;
+
+  const translated = domTranslations[trimmed];
+  if (!translated) return value;
+
+  return value.replace(trimmed, translated);
+}
+
+function translateDom(language: Language) {
+  if (typeof document === "undefined") return;
+
+  const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, {
+    acceptNode(node) {
+      const parent = node.parentElement;
+      if (!parent || ["SCRIPT", "STYLE", "TEXTAREA"].includes(parent.tagName)) {
+        return NodeFilter.FILTER_REJECT;
+      }
+      return NodeFilter.FILTER_ACCEPT;
+    },
+  });
+
+  const textNodes: Text[] = [];
+  while (walker.nextNode()) {
+    textNodes.push(walker.currentNode as Text);
+  }
+
+  textNodes.forEach((node) => {
+    if (!textNodeOriginals.has(node)) {
+      textNodeOriginals.set(node, node.nodeValue || "");
+    }
+
+    const original = textNodeOriginals.get(node) || "";
+    node.nodeValue = language === "bn" ? translateExactText(original) : original;
+  });
+
+  document.querySelectorAll("[placeholder], [aria-label], [title]").forEach((element) => {
+    const originals = attributeOriginals.get(element) || {};
+
+    ["placeholder", "aria-label", "title"].forEach((attribute) => {
+      const current = element.getAttribute(attribute);
+      if (current == null) return;
+
+      if (!originals[attribute]) {
+        originals[attribute] = current;
+      }
+
+      element.setAttribute(
+        attribute,
+        language === "bn" ? translateExactText(originals[attribute]) : originals[attribute]
+      );
+    });
+
+    attributeOriginals.set(element, originals);
+  });
+}
+
 const translations: Record<Language, Record<string, string>> = {
   en: {
     "language.current": "English",
@@ -305,6 +523,24 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
     window.localStorage.setItem("civicdesk-language", language);
     document.documentElement.lang = language;
     document.documentElement.dir = "ltr";
+  }, [language]);
+
+  React.useEffect(() => {
+    translateDom(language);
+
+    const observer = new MutationObserver(() => {
+      translateDom(language);
+    });
+
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true,
+      characterData: true,
+      attributes: true,
+      attributeFilter: ["placeholder", "aria-label", "title"],
+    });
+
+    return () => observer.disconnect();
   }, [language]);
 
   const value = React.useMemo<LanguageContextValue>(
