@@ -47,6 +47,8 @@ const domTranslations: Record<string, string> = {
   "Government complaint management portal. Submit, track, and resolve civic issues transparently.":
     "সরকারি অভিযোগ ব্যবস্থাপনা পোর্টাল। স্বচ্ছভাবে অভিযোগ জমা, ট্র্যাক ও সমাধান করুন।",
   "Government of the People. All rights reserved.": "জনগণের সরকার। সর্বস্বত্ব সংরক্ষিত।",
+  "© 2026 CivicDesk. Government of the People. All rights reserved.":
+    "© ২০২৬ CivicDesk. জনগণের সরকার। সর্বস্বত্ব সংরক্ষিত।",
   "Welcome back,": "আবার স্বাগতম,",
   "New Complaint": "নতুন অভিযোগ",
   "Total Complaints": "মোট অভিযোগ",
@@ -186,10 +188,13 @@ const domTranslations: Record<string, string> = {
   "Your full name": "আপনার পূর্ণ নাম",
   "Min 8 chars, 1 uppercase, 1 number": "কমপক্ষে ৮ অক্ষর, ১টি বড় হাতের অক্ষর, ১টি সংখ্যা",
   "Welcome back to CivicDesk": "CivicDesk-এ আবার স্বাগতম",
+  "Welcome back to": "আবার স্বাগতম",
   "Sign in to manage your complaints": "আপনার অভিযোগ পরিচালনা করতে সাইন ইন করুন",
   "Forgot password?": "পাসওয়ার্ড ভুলে গেছেন?",
   "Sign In": "সাইন ইন",
   "Don't have an account? Create one": "অ্যাকাউন্ট নেই? অ্যাকাউন্ট তৈরি করুন",
+  "Don't have an account?": "অ্যাকাউন্ট নেই?",
+  "Create one": "অ্যাকাউন্ট তৈরি করুন",
   "Enter your password": "আপনার পাসওয়ার্ড লিখুন",
   "Enter your ticket ID to check live status, messages, timeline, and files.":
     "লাইভ অবস্থা, বার্তা, টাইমলাইন ও ফাইল দেখতে আপনার টিকিট আইডি লিখুন।",
