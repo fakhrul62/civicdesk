@@ -204,7 +204,10 @@ function translateDom(language: Language) {
     }
 
     const original = textNodeOriginals.get(node) || "";
-    node.nodeValue = language === "bn" ? translateExactText(original) : original;
+    const nextValue = language === "bn" ? translateExactText(original) : original;
+    if (node.nodeValue !== nextValue) {
+      node.nodeValue = nextValue;
+    }
   });
 
   document.querySelectorAll("[placeholder], [aria-label], [title]").forEach((element) => {
@@ -218,10 +221,10 @@ function translateDom(language: Language) {
         originals[attribute] = current;
       }
 
-      element.setAttribute(
-        attribute,
-        language === "bn" ? translateExactText(originals[attribute]) : originals[attribute]
-      );
+      const nextValue = language === "bn" ? translateExactText(originals[attribute]) : originals[attribute];
+      if (element.getAttribute(attribute) !== nextValue) {
+        element.setAttribute(attribute, nextValue);
+      }
     });
 
     attributeOriginals.set(element, originals);
@@ -527,9 +530,15 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
 
   React.useEffect(() => {
     translateDom(language);
+    let scheduled = false;
 
     const observer = new MutationObserver(() => {
-      translateDom(language);
+      if (scheduled) return;
+      scheduled = true;
+      window.setTimeout(() => {
+        scheduled = false;
+        translateDom(language);
+      }, 100);
     });
 
     observer.observe(document.body, {
