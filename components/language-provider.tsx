@@ -17,6 +17,23 @@ const attributeOriginals = new WeakMap<Element, Record<string, string>>();
 const domTranslations: Record<string, string> = {
   "Toggle theme": "থিম পরিবর্তন করুন",
   Close: "বন্ধ করুন",
+  "Open menu": "মেনু খুলুন",
+  Track: "ট্র্যাক",
+  "Government Complaint Portal": "সরকারি অভিযোগ পোর্টাল",
+  "Your voice matters. We listen.": "আপনার কথা গুরুত্বপূর্ণ। আমরা শুনি।",
+  "Report civic issues, track their progress in real time, and hold your government accountable - all in one transparent platform.":
+    "নাগরিক সমস্যা জানান, অগ্রগতি সরাসরি দেখুন, এবং স্বচ্ছভাবে সেবার জবাবদিহি নিশ্চিত করুন।",
+  "Already submitted? Enter your ticket ID to check status instantly.":
+    "আগে অভিযোগ করেছেন? অবস্থা দেখতে টিকিট আইডি লিখুন।",
+  "Simple Process": "সহজ প্রক্রিয়া",
+  "How it works": "যেভাবে কাজ করে",
+  "From submission to resolution - a transparent process you can trust.":
+    "জমা থেকে সমাধান পর্যন্ত স্বচ্ছ প্রক্রিয়া।",
+  "Submit Your Complaint": "অভিযোগ জমা দিন",
+  "Fill out a simple form describing your civic issue. Attach photos, select a category, and provide the location.":
+    "সমস্যার বিবরণ দিন, ছবি বা প্রমাণ যুক্ত করুন, বিভাগ ও লোকেশন নির্বাচন করুন।",
+  "Receive a Ticket ID": "টিকিট আইডি নিন",
+  "Get an instant": "সঙ্গে সঙ্গে পান",
   "Quick Links": "দ্রুত লিংক",
   "Submit a Complaint": "অভিযোগ জমা দিন",
   "Track Your Complaint": "অভিযোগ ট্র্যাক করুন",
@@ -168,6 +185,20 @@ const domTranslations: Record<string, string> = {
   "Back to homepage": "হোমপেজে ফিরে যান",
   "Your full name": "আপনার পূর্ণ নাম",
   "Min 8 chars, 1 uppercase, 1 number": "কমপক্ষে ৮ অক্ষর, ১টি বড় হাতের অক্ষর, ১টি সংখ্যা",
+  "Welcome back to CivicDesk": "CivicDesk-এ আবার স্বাগতম",
+  "Sign in to manage your complaints": "আপনার অভিযোগ পরিচালনা করতে সাইন ইন করুন",
+  "Forgot password?": "পাসওয়ার্ড ভুলে গেছেন?",
+  "Sign In": "সাইন ইন",
+  "Don't have an account? Create one": "অ্যাকাউন্ট নেই? অ্যাকাউন্ট তৈরি করুন",
+  "Enter your password": "আপনার পাসওয়ার্ড লিখুন",
+  "Enter your ticket ID to check live status, messages, timeline, and files.":
+    "লাইভ অবস্থা, বার্তা, টাইমলাইন ও ফাইল দেখতে আপনার টিকিট আইডি লিখুন।",
+  "Enter your ticket ID": "আপনার টিকিট আইডি লিখুন",
+  "No complaint found with ticket ID": "এই টিকিট আইডি দিয়ে কোনো অভিযোগ পাওয়া যায়নি",
+  "Please check the ID and try again.": "আইডিটি যাচাই করে আবার চেষ্টা করুন।",
+  Assigned: "অ্যাসাইন করা হয়েছে",
+  "Pending assignment": "অ্যাসাইনমেন্ট অপেক্ষায়",
+  "View Map": "ম্যাপ দেখুন",
 };
 
 function translateExactText(value: string) {
@@ -204,7 +235,13 @@ function translateDom(language: Language) {
     }
 
     const original = textNodeOriginals.get(node) || "";
-    const nextValue = language === "bn" ? translateExactText(original) : original;
+    const translated = translateExactText(original);
+    const nextValue =
+      language === "bn"
+        ? translated !== original
+          ? translated
+          : node.nodeValue || ""
+        : original;
     if (node.nodeValue !== nextValue) {
       node.nodeValue = nextValue;
     }
@@ -221,7 +258,13 @@ function translateDom(language: Language) {
         originals[attribute] = current;
       }
 
-      const nextValue = language === "bn" ? translateExactText(originals[attribute]) : originals[attribute];
+      const translated = translateExactText(originals[attribute]);
+      const nextValue =
+        language === "bn"
+          ? translated !== originals[attribute]
+            ? translated
+            : current
+          : originals[attribute];
       if (element.getAttribute(attribute) !== nextValue) {
         element.setAttribute(attribute, nextValue);
       }
