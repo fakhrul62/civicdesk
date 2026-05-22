@@ -27,10 +27,33 @@ export async function signUp(input: SignUpInput) {
   try {
     const existingUser = await prisma.user.findUnique({
       where: { email: normalizedEmail },
-      select: { id: true },
+      select: { id: true, email: true, role: true, password_hash: true, is_active: true },
     });
 
     if (existingUser) {
+      if (!existingUser.password_hash) {
+        const passwordHash = await bcrypt.hash(password, 12);
+        const repairedUser = await prisma.user.update({
+          where: { id: existingUser.id },
+          data: {
+            password_hash: passwordHash,
+            full_name,
+            phone: phone || null,
+            is_active: true,
+          },
+          select: { id: true, email: true, role: true },
+        });
+
+        await createAppSession({
+          sub: repairedUser.id,
+          email: repairedUser.email,
+          role: repairedUser.role,
+        });
+
+        revalidatePath("/", "layout");
+        return { success: true, redirect: "/dashboard", message: "Account is ready." };
+      }
+
       return { error: "An account with this email already exists." };
     }
 
