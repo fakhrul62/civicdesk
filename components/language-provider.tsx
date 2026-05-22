@@ -211,7 +211,15 @@ function translateExactText(value: string) {
   if (!trimmed) return value;
 
   const translated = domTranslations[trimmed];
-  if (!translated) return value;
+  if (!translated) {
+    if (trimmed.includes("Government of the People. All rights reserved.")) {
+      return value
+        .replace("Government of the People. All rights reserved.", "জনগণের সরকার। সর্বস্বত্ব সংরক্ষিত।")
+        .replace("2026", "২০২৬");
+    }
+
+    return value;
+  }
 
   return value.replace(trimmed, translated);
 }
