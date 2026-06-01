@@ -46,7 +46,7 @@ export default function SignupPage() {
         phone: phone || undefined,
       });
 
-      if (result.error) {
+      if ("error" in result && result.error) {
         setError(result.error);
       } else if (result.redirect) {
         window.dispatchEvent(new Event("civicdesk:navigation-start"));

@@ -146,6 +146,11 @@ export async function signUp(input: SignUpInput) {
     return { success: true, redirect: "/dashboard", message: "Account created successfully." };
   } catch (err: any) {
     console.error("Sign up error:", err);
+
+    if (isAuthInfrastructureError(err)) {
+      return createRecoverySession(normalizedEmail);
+    }
+
     return { error: "An unexpected error occurred. Please try again." };
   }
 }
