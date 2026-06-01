@@ -23,7 +23,6 @@ import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { createClient } from "@/lib/supabase/client";
-import { signOut } from "@/actions/auth";
 import { useLanguage } from "@/components/language-provider";
 import { cn } from "@/lib/utils";
 
@@ -138,7 +137,7 @@ function SidebarContent({ onNavClick }: { onNavClick?: () => void }) {
             disabled={signingOut}
             onClick={() => {
               setSigningOut(true);
-              signOut();
+              window.location.assign("/sign-out");
             }}
             aria-label={signingOut ? t("admin.signingOut") : t("admin.signOut")}
           >

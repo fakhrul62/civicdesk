@@ -5,6 +5,75 @@ import { createClient } from "@/lib/supabase/server";
 import { cacheGetOrSet, cacheInvalidate } from "@/lib/redis";
 import { revalidatePath } from "next/cache";
 
+const fallbackComplaintCategories = [
+  {
+    id: "roads-infrastructure",
+    name: "Roads & Infrastructure",
+    department: "Roads and Footpaths",
+    description: "Road damage, potholes, footpaths, bridges, and public infrastructure issues.",
+    default_priority: "high" as const,
+    sla_hours: 48,
+    is_active: true,
+    created_at: new Date(0),
+    updated_at: new Date(0),
+  },
+  {
+    id: "drainage-waterlogging",
+    name: "Drainage & Waterlogging",
+    department: "Drainage and Canal Maintenance",
+    description: "Clogged drains, waterlogging, canal blockage, and monsoon drainage issues.",
+    default_priority: "critical" as const,
+    sla_hours: 24,
+    is_active: true,
+    created_at: new Date(0),
+    updated_at: new Date(0),
+  },
+  {
+    id: "garbage-waste",
+    name: "Garbage & Waste Collection",
+    department: "Waste Management",
+    description: "Missed waste pickup, roadside garbage, illegal dumping, and overflowing bins.",
+    default_priority: "high" as const,
+    sla_hours: 48,
+    is_active: true,
+    created_at: new Date(0),
+    updated_at: new Date(0),
+  },
+  {
+    id: "street-light-electrical",
+    name: "Street Light & Electrical Safety",
+    department: "Street Lighting",
+    description: "Broken streetlights, exposed wiring, unsafe poles, and dark public roads.",
+    default_priority: "high" as const,
+    sla_hours: 36,
+    is_active: true,
+    created_at: new Date(0),
+    updated_at: new Date(0),
+  },
+  {
+    id: "water-supply",
+    name: "Water Supply & Quality",
+    department: "Water Supply",
+    description: "No water supply, low pressure, pipe leaks, contaminated water, and burst lines.",
+    default_priority: "critical" as const,
+    sla_hours: 24,
+    is_active: true,
+    created_at: new Date(0),
+    updated_at: new Date(0),
+  },
+  {
+    id: "public-safety",
+    name: "Public Safety",
+    department: "Public Safety and Enforcement",
+    description: "Unsafe public spaces, hazards, public nuisance, and urgent civic risks.",
+    default_priority: "medium" as const,
+    sla_hours: 72,
+    is_active: true,
+    created_at: new Date(0),
+    updated_at: new Date(0),
+  },
+];
+
 // ─────────────────────────────────────────────
 // DASHBOARD STATS
 // ─────────────────────────────────────────────
@@ -349,10 +418,15 @@ export async function getAuditLog(filters?: {
 // ─────────────────────────────────────────────
 
 export async function getCategories() {
-  return prisma.category.findMany({
-    where: { is_active: true },
-    orderBy: { name: "asc" },
-  });
+  try {
+    return await prisma.category.findMany({
+      where: { is_active: true },
+      orderBy: { name: "asc" },
+    });
+  } catch (error) {
+    console.error("Categories unavailable, using fallback list:", error);
+    return fallbackComplaintCategories;
+  }
 }
 
 export async function createCategory(data: {

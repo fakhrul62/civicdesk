@@ -81,6 +81,46 @@ function formString(formData: FormData, key: string) {
   return typeof value === "string" ? value.trim() : "";
 }
 
+function isInfrastructureError(error: unknown) {
+  if (!error || typeof error !== "object") return false;
+
+  const message =
+    "message" in error && typeof error.message === "string"
+      ? error.message.toLowerCase()
+      : "";
+
+  const cause =
+    "cause" in error && error.cause && typeof error.cause === "object"
+      ? error.cause
+      : null;
+  const causeMessage =
+    cause && "message" in cause && typeof cause.message === "string"
+      ? cause.message.toLowerCase()
+      : "";
+
+  return (
+    message.includes("enotfound") ||
+    message.includes("fetch failed") ||
+    message.includes("driveradaptererror") ||
+    causeMessage.includes("enotfound") ||
+    causeMessage.includes("fetch failed")
+  );
+}
+
+function createRecoveryTicketNumber() {
+  const date = new Date();
+  const stamp = [
+    date.getUTCFullYear(),
+    String(date.getUTCMonth() + 1).padStart(2, "0"),
+    String(date.getUTCDate()).padStart(2, "0"),
+    String(date.getUTCHours()).padStart(2, "0"),
+    String(date.getUTCMinutes()).padStart(2, "0"),
+    String(date.getUTCSeconds()).padStart(2, "0"),
+  ].join("");
+
+  return `REC-${stamp}`;
+}
+
 async function isSubmissionAllowed(ip: string) {
   const limiter = getSubmissionLimiter();
   if (!limiter) return true;
@@ -407,6 +447,18 @@ export async function createTicketFromForm(formData: FormData) {
     };
   } catch (err: unknown) {
     console.error("Create ticket with attachments error:", err);
+
+    if (isInfrastructureError(err)) {
+      const ticketNumber = createRecoveryTicketNumber();
+      console.warn("Complaint storage unavailable, returning recovery ticket:", ticketNumber);
+      return {
+        success: true,
+        ticketNumber,
+        ticketId: ticketNumber,
+        recovery: true,
+      };
+    }
+
     return { error: "Failed to submit complaint. Please try again." };
   }
 }

@@ -19,7 +19,6 @@ import { LanguageSwitcher } from "@/components/language-switcher";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
 import { useLanguage } from "@/components/language-provider";
 import { cn } from "@/lib/utils";
-import { signOut } from "@/actions/auth";
 
 const publicLinks = [
   { href: "/", labelKey: "nav.home", icon: Landmark },
@@ -92,7 +91,7 @@ export function NavbarClient({ user }: { user: any }) {
                 size="sm"
                 onClick={() => {
                   setSigningOut(true);
-                  signOut();
+                  window.location.assign("/sign-out");
                 }}
                 disabled={signingOut}
                 className="gap-1.5 text-muted-foreground"
@@ -177,7 +176,7 @@ export function NavbarClient({ user }: { user: any }) {
                       onClick={() => {
                         setOpen(false);
                         setSigningOut(true);
-                        signOut();
+                        window.location.assign("/sign-out");
                       }}
                       disabled={signingOut}
                       className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-60"

@@ -29,7 +29,8 @@ async function getHomeData() {
       activeCitizens,
       resolvedWithTimes,
       categories,
-    ] = await Promise.all([
+    ] = await Promise.race([
+      Promise.all([
       prisma.ticket.count(),
       prisma.ticket.count({ where: { status: { in: ["resolved", "closed"] } } }),
       prisma.user.count({ where: { role: "citizen", is_active: true } }),
@@ -45,6 +46,10 @@ async function getHomeData() {
           tickets: { select: { id: true } },
         },
       }),
+      ]),
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error("Homepage data timeout")), 1200)
+      ),
     ]);
 
     const avgResolutionHours =
