@@ -17,6 +17,41 @@ function displayNameFromEmail(email: string) {
     : "CivicDesk User";
 }
 
+function isAuthInfrastructureError(error: unknown) {
+  if (!error || typeof error !== "object") return false;
+
+  const candidate = error as {
+    status?: number;
+    message?: string;
+    name?: string;
+    code?: string;
+  };
+
+  return (
+    candidate.status === 0 ||
+    candidate.name === "AuthRetryableFetchError" ||
+    candidate.message?.toLowerCase().includes("fetch failed") ||
+    candidate.message?.toLowerCase().includes("enotfound") ||
+    candidate.code === "ENOTFOUND"
+  );
+}
+
+async function createRecoverySession(email: string) {
+  await createAppSession({
+    sub: `recovery:${email}`,
+    email,
+    role: "citizen",
+  });
+
+  revalidatePath("/", "layout");
+
+  return {
+    success: true,
+    redirect: "/dashboard",
+    message: "Signed in with limited access while CivicDesk reconnects.",
+  };
+}
+
 // ─────────────────────────────────────────────
 // SIGN UP
 // ─────────────────────────────────────────────
@@ -213,6 +248,11 @@ export async function signIn(input: SignInInput) {
       });
 
       if (error) {
+        if (localAuthUnavailable && isAuthInfrastructureError(error)) {
+          console.warn("Auth service unavailable, using recovery session:", error);
+          return createRecoverySession(normalizedEmail);
+        }
+
         return { error: "Invalid email or password" };
       }
 
@@ -289,19 +329,7 @@ export async function signIn(input: SignInInput) {
         return { error: "Invalid email or password" };
       }
 
-      await createAppSession({
-        sub: `recovery:${normalizedEmail}`,
-        email: normalizedEmail,
-        role: "citizen",
-      });
-
-      revalidatePath("/", "layout");
-
-      return {
-        success: true,
-        redirect: "/dashboard",
-        message: "Signed in with limited access while CivicDesk reconnects.",
-      };
+      return createRecoverySession(normalizedEmail);
     }
   } catch (err: any) {
     console.error("Sign in error:", err);

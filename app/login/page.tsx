@@ -37,7 +37,7 @@ export default function LoginPage() {
     try {
       const result = await signIn({ email, password });
 
-      if (result.error) {
+      if ("error" in result && result.error) {
         setError(result.error);
         setLoading(false);
         setLoadingMessage("");
