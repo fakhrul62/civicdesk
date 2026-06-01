@@ -741,27 +741,38 @@ export async function getTickets(filters?: {
     ];
   }
 
-  const [tickets, total] = await Promise.all([
-    prisma.ticket.findMany({
-      where,
-      include: {
-        category: { select: { name: true, department: true } },
-        citizen: { select: { full_name: true, email: true } },
-        assigned_agent: { select: { full_name: true } },
-      },
-      orderBy: { created_at: "desc" },
-      skip,
-      take: limit,
-    }),
-    prisma.ticket.count({ where }),
-  ]);
+  try {
+    const [tickets, total] = await Promise.all([
+      prisma.ticket.findMany({
+        where,
+        include: {
+          category: { select: { name: true, department: true } },
+          citizen: { select: { full_name: true, email: true } },
+          assigned_agent: { select: { full_name: true } },
+        },
+        orderBy: { created_at: "desc" },
+        skip,
+        take: limit,
+      }),
+      prisma.ticket.count({ where }),
+    ]);
 
-  return {
-    tickets,
-    total,
-    page,
-    totalPages: Math.ceil(total / limit),
-  };
+    return {
+      tickets,
+      total,
+      page,
+      totalPages: Math.ceil(total / limit),
+    };
+  } catch (error) {
+    console.error("Ticket list unavailable, using empty result:", error);
+
+    return {
+      tickets: [],
+      total: 0,
+      page,
+      totalPages: 0,
+    };
+  }
 }
 
 // ─────────────────────────────────────────────

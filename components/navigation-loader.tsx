@@ -69,28 +69,14 @@ export function NavigationLoader() {
       start();
     };
 
-    const handleSubmit = (event: SubmitEvent) => {
-      if (event.defaultPrevented) return;
-
-      const form = event.target as HTMLFormElement | null;
-      if (!form) return;
-
-      const action = form.getAttribute("action");
-      if (!action || isInternalUrl(action)) {
-        start();
-      }
-    };
-
     window.addEventListener("civicdesk:navigation-start", start);
     window.addEventListener("pageshow", stop);
     document.addEventListener("click", handleClick, true);
-    document.addEventListener("submit", handleSubmit, true);
 
     return () => {
       window.removeEventListener("civicdesk:navigation-start", start);
       window.removeEventListener("pageshow", stop);
       document.removeEventListener("click", handleClick, true);
-      document.removeEventListener("submit", handleSubmit, true);
     };
   }, []);
 
