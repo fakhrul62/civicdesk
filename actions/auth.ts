@@ -348,12 +348,6 @@ export async function signIn(input: SignInInput) {
 
 export async function signOut() {
   await clearAppSession();
-  try {
-    const supabase = await createClient();
-    await supabase.auth.signOut();
-  } catch (error) {
-    console.warn("Supabase sign out skipped:", error);
-  }
   revalidatePath("/", "layout");
   redirect("/");
 }
