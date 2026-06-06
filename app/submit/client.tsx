@@ -44,7 +44,7 @@ type SubmitUser = {
   full_name: string;
   email: string;
   phone: string | null;
-};
+} | null;
 
 const MAX_ATTACHMENTS = 5;
 const MAX_ATTACHMENT_SIZE = 5 * 1024 * 1024;
@@ -98,10 +98,6 @@ export function SubmitClient({
   ];
 
   const selectedCategory = categories.find((c) => c.id === categoryId);
-  const categoryLabels = categories.reduce<Record<string, string>>((labels, category) => {
-    labels[category.id] = category.name;
-    return labels;
-  }, {});
   const location = [address, area, city].filter(Boolean).join(", ");
   const hasCoordinates = latitude && longitude;
   const mapSrc = hasCoordinates
@@ -194,6 +190,18 @@ export function SubmitClient({
       return;
     }
 
+    if (!name.trim()) {
+      setError(t("submit.errorName") || "Please enter your full name");
+      setIsSubmitting(false);
+      return;
+    }
+
+    if (!email.trim() || !email.includes("@")) {
+      setError(t("submit.errorEmail") || "Please enter a valid email address");
+      setIsSubmitting(false);
+      return;
+    }
+
     if (files.some((file) => file.size > MAX_ATTACHMENT_SIZE)) {
       setError(`Each attachment must be ${formatFileSize(MAX_ATTACHMENT_SIZE)} or smaller.`);
       setIsSubmitting(false);
@@ -212,6 +220,8 @@ export function SubmitClient({
     formData.set("description", description);
     formData.set("location", location);
     formData.set("phone", phone);
+    formData.set("name", name);
+    formData.set("email", email);
     if (latitude) formData.set("latitude", latitude);
     if (longitude) formData.set("longitude", longitude);
     files.forEach((file) => formData.append("attachments", file));
@@ -338,9 +348,7 @@ export function SubmitClient({
                     <Label htmlFor="category">{t("submit.selectCategory")} <span className="text-destructive">*</span></Label>
                     <Select value={categoryId} onValueChange={setCategoryId}>
                       <SelectTrigger id="category" className="w-full">
-                        <SelectValue placeholder={t("submit.chooseCategory")}>
-                          {(value) => value ? categoryLabels[String(value)] || t("submit.chooseCategory") : t("submit.chooseCategory")}
-                        </SelectValue>
+                        <SelectValue placeholder={t("submit.chooseCategory")} />
                       </SelectTrigger>
                       <SelectContent align="start" className="w-[min(90vw,36rem)]">
                         {categories.map((cat) => (
@@ -479,17 +487,27 @@ export function SubmitClient({
               {step === 4 && (
                 <>
                   <div className="space-y-2">
-                    <Label htmlFor="name">{t("submit.fullName")}</Label>
-                    <Input id="name" value={name} onChange={(e) => setName(e.target.value)} disabled />
+                    <Label htmlFor="name">{t("submit.fullName")} <span className="text-destructive">*</span></Label>
+                    <Input id="name" placeholder={t("submit.namePlaceholder")} value={name} onChange={(e) => setName(e.target.value)} />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="email">{t("submit.email")}</Label>
-                    <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} disabled />
+                    <Label htmlFor="email">{t("submit.email")} <span className="text-destructive">*</span></Label>
+                    <Input id="email" type="email" placeholder={t("submit.emailPlaceholder")} value={email} onChange={(e) => setEmail(e.target.value)} />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="phone">{t("submit.phone")}</Label>
                     <Input id="phone" type="tel" placeholder="+880 1XXX XXXXXX" value={phone} onChange={(e) => setPhone(e.target.value)} />
                   </div>
+                  {!user && (
+                    <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 dark:border-blue-900 dark:bg-blue-950">
+                      <p className="text-sm text-blue-800 dark:text-blue-200">
+                        {t("submit.guestSubmitInfo") || "You can submit this complaint without an account. Your ticket ID will be provided for tracking."}
+                      </p>
+                      <p className="mt-2 text-sm text-blue-700 dark:text-blue-300">
+                        {t("submit.createAccountInfo") || "Want to create an account to manage your complaints? You can do so after submitting this one."}
+                      </p>
+                    </div>
+                  )}
                   <div className="mt-4 space-y-2 rounded-lg border bg-muted/50 p-4">
                     <h4 className="text-sm font-medium">{t("submit.review")}</h4>
                     <div className="grid gap-1 text-sm">

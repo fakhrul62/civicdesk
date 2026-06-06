@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createClient as createSupabaseAdminClient } from "@supabase/supabase-js";
 import { getAppSession } from "@/lib/auth-session";
 import { getSubmissionLimiter } from "@/lib/redis";
+import bcrypt from "bcryptjs";
 import {
   createTicketSchema,
   updateTicketStatusSchema,
@@ -268,6 +269,8 @@ export async function createTicketFromForm(formData: FormData) {
   const description = formString(formData, "description");
   const location = formString(formData, "location");
   const phone = formString(formData, "phone");
+  const name = formString(formData, "name");
+  const email = formString(formData, "email");
   const latitudeValue = formString(formData, "latitude");
   const longitudeValue = formString(formData, "longitude");
   const latitude = latitudeValue ? Number(latitudeValue) : undefined;
@@ -284,6 +287,14 @@ export async function createTicketFromForm(formData: FormData) {
 
   if (!parsed.success) {
     return { error: parsed.error.issues[0].message };
+  }
+
+  if (!name.trim()) {
+    return { error: "Full name is required" };
+  }
+
+  if (!email.trim() || !email.includes("@")) {
+    return { error: "Valid email is required" };
   }
 
   const files = formData
@@ -315,17 +326,69 @@ export async function createTicketFromForm(formData: FormData) {
 
     const authUserId = await getAuthenticatedUserId();
 
-    if (!authUserId) {
-      return { error: "You must be logged in to submit a complaint" };
-    }
+    // For guest submissions, find or create a user with the provided email
+    let citizenId: string;
 
-    const user = await prisma.user.findUnique({
-      where: { id: authUserId },
-      select: { id: true, full_name: true, email: true },
-    });
+    if (authUserId) {
+      // User is logged in - use their account but allow them to override name/email
+      const existingUser = await prisma.user.findUnique({
+        where: { id: authUserId },
+        select: { id: true },
+      });
 
-    if (!user) {
-      return { error: "Your user profile is not ready. Please sign out and sign in again." };
+      if (!existingUser) {
+        return { error: "Your user profile is not ready. Please sign out and sign in again." };
+      }
+
+      citizenId = authUserId;
+
+      // Update user profile if provided different name/email
+      await prisma.user.update({
+        where: { id: authUserId },
+        data: {
+          full_name: name,
+          email: email,
+          phone: phone || undefined,
+        },
+      });
+    } else {
+      // Guest submission - find or create guest user
+      const normalizedEmail = email.toLowerCase().trim();
+      
+      let guestUser = await prisma.user.findUnique({
+        where: { email: normalizedEmail },
+        select: { id: true },
+      });
+
+      if (!guestUser) {
+        // Create a guest user with a random password hash (they won't be able to log in without account recovery)
+        const randomPassword = crypto.randomUUID();
+        const passwordHash = await bcrypt.hash(randomPassword, 12);
+        
+        guestUser = await prisma.user.create({
+          data: {
+            id: crypto.randomUUID(),
+            email: normalizedEmail,
+            full_name: name,
+            phone: phone || null,
+            role: "citizen",
+            is_active: true,
+            password_hash: passwordHash,
+          },
+          select: { id: true },
+        });
+      } else {
+        // Update existing guest user's name and phone
+        await prisma.user.update({
+          where: { id: guestUser.id },
+          data: {
+            full_name: name,
+            phone: phone || undefined,
+          },
+        });
+      }
+
+      citizenId = guestUser.id;
     }
 
     const category = await prisma.category.findUnique({
@@ -341,20 +404,13 @@ export async function createTicketFromForm(formData: FormData) {
     const dueDate = calculateDueDate(category.sla_hours);
 
     const ticket = await prisma.$transaction(async (tx) => {
-      if (phone) {
-        await tx.user.update({
-          where: { id: authUserId },
-          data: { phone },
-        });
-      }
-
       const newTicket = await tx.ticket.create({
         data: {
           ticket_number: ticketNumber,
           title: parsed.data.title,
           description: parsed.data.description,
           category_id: parsed.data.category_id,
-          citizen_id: authUserId,
+          citizen_id: citizenId,
           priority,
           location: parsed.data.location,
           latitude: parsed.data.latitude,
@@ -380,7 +436,7 @@ export async function createTicketFromForm(formData: FormData) {
       await tx.auditLog.create({
         data: {
           ticket_id: newTicket.id,
-          actor_id: authUserId,
+          actor_id: citizenId,
           action: "Ticket created",
           field: "status",
           new_value: "Submitted",
