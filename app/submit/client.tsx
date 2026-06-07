@@ -78,7 +78,7 @@ export function SubmitClient({
   const [navigatingTo, setNavigatingTo] = useState<"track" | "dashboard" | null>(null);
   const [error, setError] = useState("");
 
-  const [categoryId, setCategoryId] = useState<string | null>(null);
+  const [categoryId, setCategoryId] = useState<string | undefined>(undefined);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [address, setAddress] = useState("");
