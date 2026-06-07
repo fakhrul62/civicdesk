@@ -10,18 +10,16 @@ type SelectProps = Omit<
   SelectPrimitive.Root.Props<string>,
   "onValueChange" | "value" | "defaultValue"
 > & {
-  value?: string
-  defaultValue?: string
-  onValueChange?: (value: string) => void
+  value?: string | null
+  defaultValue?: string | null
+  onValueChange?: (value: string | null) => void
 }
 
 function Select({ onValueChange, ...props }: SelectProps) {
   return (
     <SelectPrimitive.Root
       onValueChange={(value) => {
-        if (value !== null) {
-          onValueChange?.(value)
-        }
+        onValueChange?.(value)
       }}
       {...props}
     />

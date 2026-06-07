@@ -336,7 +336,7 @@ export function AdminTicketDetailClient({
             <CardContent className="space-y-4">
               <div className="space-y-1.5">
                 <Label className="text-xs">Status</Label>
-                <Select value={status} onValueChange={setStatus}>
+                <Select value={status} onValueChange={(value) => setStatus(value ?? "submitted")}>
                   <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="submitted">Submitted</SelectItem>
@@ -350,7 +350,7 @@ export function AdminTicketDetailClient({
               </div>
               <div className="space-y-1.5">
                 <Label className="text-xs">Priority</Label>
-                <Select value={priority} onValueChange={setPriority}>
+                <Select value={priority} onValueChange={(value) => setPriority(value ?? "medium")}>
                   <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="critical">Critical</SelectItem>
@@ -362,7 +362,7 @@ export function AdminTicketDetailClient({
               </div>
               <div className="space-y-1.5">
                 <Label className="text-xs">Assigned Agent</Label>
-                <Select value={assignedAgent} onValueChange={setAssignedAgent}>
+                <Select value={assignedAgent} onValueChange={(value) => setAssignedAgent(value ?? UNASSIGNED)}>
                   <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Select assignee" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value={UNASSIGNED}>Unassigned</SelectItem>

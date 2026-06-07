@@ -51,7 +51,7 @@ export function AdminAuditLogClient({ initialData }: { initialData: any }) {
             className="h-9 pl-8 text-sm"
           />
         </div>
-        <Select value={actionFilter} onValueChange={setActionFilter}>
+        <Select value={actionFilter} onValueChange={(value) => setActionFilter(value ?? "all")}>
           <SelectTrigger className="h-9 w-full sm:w-[170px] text-sm">
             <SelectValue placeholder="Filter by action" />
           </SelectTrigger>

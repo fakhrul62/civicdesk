@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -14,19 +14,13 @@ import {
   X,
   LocateFixed,
   ExternalLink,
+  ChevronDown,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { createTicketFromForm } from "@/actions/tickets";
@@ -78,7 +72,7 @@ export function SubmitClient({
   const [navigatingTo, setNavigatingTo] = useState<"track" | "dashboard" | null>(null);
   const [error, setError] = useState("");
 
-  const [categoryId, setCategoryId] = useState<string | undefined>(undefined);
+  const [categoryId, setCategoryId] = useState<string | null>(null);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [address, setAddress] = useState("");
@@ -348,33 +342,32 @@ export function SubmitClient({
                 <>
                   <div className="space-y-2">
                     <Label htmlFor="category">{t("submit.selectCategory")} <span className="text-destructive">*</span></Label>
-                    <Select value={categoryId} onValueChange={setCategoryId}>
-                      <SelectTrigger id="category" className="w-full">
-                        <SelectValue placeholder={t("submit.chooseCategory")}>
-                          {(value) => {
-                            const category = categories.find((cat) => cat.id === value);
-                            return category?.name || t("submit.chooseCategory");
-                          }}
-                        </SelectValue>
-                      </SelectTrigger>
-                      <SelectContent align="start" className="w-[min(90vw,36rem)]">
+                    <div className="relative">
+                      <select
+                        id="category"
+                        value={categoryId ?? ""}
+                        onChange={(event) => setCategoryId(event.target.value || null)}
+                        className={cn(
+                          "h-10 w-full appearance-none rounded-lg border border-input bg-transparent py-2 pr-10 pl-3 text-sm outline-none transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50",
+                          selectedCategory ? "text-foreground" : "text-muted-foreground"
+                        )}
+                      >
+                        <option value="">{t("submit.chooseCategory")}</option>
                         {categories.map((cat) => (
-                          <SelectItem key={cat.id} value={cat.id} label={cat.name}>
-                            <span className="flex flex-col items-start gap-0.5">
-                              <span className="font-medium">{cat.name}</span>
-                              <span className="text-xs text-muted-foreground">{cat.department} · {cat.sla_hours}h SLA</span>
-                            </span>
-                          </SelectItem>
+                          <option key={cat.id} value={cat.id}>
+                            {cat.name} - {cat.department} · {cat.sla_hours}h SLA
+                          </option>
                         ))}
-                      </SelectContent>
-                    </Select>
+                      </select>
+                      <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    </div>
                   </div>
                   {selectedCategory && (
                     <div className="rounded-lg border bg-muted/50 p-3 text-sm">
                       <p className="font-medium">{selectedCategory.name}</p>
                       <p className="mt-0.5 text-muted-foreground">{selectedCategory.description || selectedCategory.department}</p>
                       <p className="mt-2 text-xs text-muted-foreground">
-                        {t("submit.routedTo")} {selectedCategory.department} · {t("submit.targetResponse")} {selectedCategory.sla_hours} {t("submit.hours")}
+                        {t("submit.routedTo")} {selectedCategory.department} - {t("submit.targetResponse")} {selectedCategory.sla_hours} {t("submit.hours")}
                       </p>
                     </div>
                   )}

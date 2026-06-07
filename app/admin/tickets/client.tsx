@@ -104,7 +104,7 @@ export function AdminTicketsClient({ initialData }: { initialData: any }) {
             className="h-9 pl-8 text-sm"
           />
         </div>
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
+        <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value ?? "all")}>
           <SelectTrigger className="h-9 w-full sm:w-[150px] text-sm">
             <SelectValue placeholder="Status" />
           </SelectTrigger>
@@ -118,7 +118,7 @@ export function AdminTicketsClient({ initialData }: { initialData: any }) {
             <SelectItem value="closed">Closed</SelectItem>
           </SelectContent>
         </Select>
-        <Select value={priorityFilter} onValueChange={setPriorityFilter}>
+        <Select value={priorityFilter} onValueChange={(value) => setPriorityFilter(value ?? "all")}>
           <SelectTrigger className="h-9 w-full sm:w-[140px] text-sm">
             <SelectValue placeholder="Priority" />
           </SelectTrigger>

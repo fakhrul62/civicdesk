@@ -68,7 +68,7 @@ export function AdminAnalyticsClient({ data }: { data: any }) {
             Complaint trends, resolution metrics, and department performance.
           </p>
         </div>
-        <Select value={period} onValueChange={setPeriod}>
+        <Select value={period} onValueChange={(value) => setPeriod(value ?? "30d")}>
           <SelectTrigger className="h-9 w-[140px] text-sm">
             <SelectValue />
           </SelectTrigger>
