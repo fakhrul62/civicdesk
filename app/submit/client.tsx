@@ -78,7 +78,7 @@ export function SubmitClient({
   const [navigatingTo, setNavigatingTo] = useState<"track" | "dashboard" | null>(null);
   const [error, setError] = useState("");
 
-  const [categoryId, setCategoryId] = useState<string | undefined>(undefined);
+  const [categoryId, setCategoryId] = useState<string | null>(null);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [address, setAddress] = useState("");
@@ -339,7 +339,9 @@ export function SubmitClient({
 
           <Card className="border">
             <CardHeader>
-              <CardTitle className="text-lg">{formSteps[step - 1].title}</CardTitle>
+              <CardTitle className="text-lg">
+                {step === 1 && selectedCategory ? selectedCategory.name : formSteps[step - 1].title}
+              </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               {step === 1 && (
@@ -348,7 +350,12 @@ export function SubmitClient({
                     <Label htmlFor="category">{t("submit.selectCategory")} <span className="text-destructive">*</span></Label>
                     <Select value={categoryId} onValueChange={setCategoryId}>
                       <SelectTrigger id="category" className="w-full">
-                        <SelectValue placeholder={t("submit.chooseCategory")} />
+                        <SelectValue placeholder={t("submit.chooseCategory")}>
+                          {(value) => {
+                            const category = categories.find((cat) => cat.id === value);
+                            return category?.name || t("submit.chooseCategory");
+                          }}
+                        </SelectValue>
                       </SelectTrigger>
                       <SelectContent align="start" className="w-[min(90vw,36rem)]">
                         {categories.map((cat) => (
