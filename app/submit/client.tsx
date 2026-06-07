@@ -72,7 +72,7 @@ export function SubmitClient({
   const [navigatingTo, setNavigatingTo] = useState<"track" | "dashboard" | null>(null);
   const [error, setError] = useState("");
 
-  const [categoryId, setCategoryId] = useState<string | null>(null);
+  const [categoryId, setCategoryId] = useState("");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [address, setAddress] = useState("");
@@ -345,8 +345,9 @@ export function SubmitClient({
                     <div className="relative">
                       <select
                         id="category"
-                        value={categoryId ?? ""}
-                        onChange={(event) => setCategoryId(event.target.value || null)}
+                        value={categoryId}
+                        onChange={(event) => setCategoryId(event.target.value)}
+                        onInput={(event) => setCategoryId(event.currentTarget.value)}
                         className={cn(
                           "h-10 w-full appearance-none rounded-lg border border-input bg-transparent py-2 pr-10 pl-3 text-sm outline-none transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50",
                           selectedCategory ? "text-foreground" : "text-muted-foreground"
@@ -363,7 +364,7 @@ export function SubmitClient({
                     </div>
                   </div>
                   {selectedCategory && (
-                    <div className="rounded-lg border bg-muted/50 p-3 text-sm">
+                    <div className="rounded-lg border bg-muted/50 p-3 text-sm" data-no-translate>
                       <p className="font-medium">{selectedCategory.name}</p>
                       <p className="mt-0.5 text-muted-foreground">{selectedCategory.description || selectedCategory.department}</p>
                       <p className="mt-2 text-xs text-muted-foreground">

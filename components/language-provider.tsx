@@ -230,7 +230,11 @@ function translateDom(language: Language) {
   const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, {
     acceptNode(node) {
       const parent = node.parentElement;
-      if (!parent || ["SCRIPT", "STYLE", "TEXTAREA"].includes(parent.tagName)) {
+      if (
+        !parent ||
+        parent.closest("[data-no-translate]") ||
+        ["SCRIPT", "STYLE", "TEXTAREA"].includes(parent.tagName)
+      ) {
         return NodeFilter.FILTER_REJECT;
       }
       return NodeFilter.FILTER_ACCEPT;
