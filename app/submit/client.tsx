@@ -348,7 +348,9 @@ export function SubmitClient({
                     <Label htmlFor="category">{t("submit.selectCategory")} <span className="text-destructive">*</span></Label>
                     <Select value={categoryId} onValueChange={setCategoryId}>
                       <SelectTrigger id="category" className="w-full">
-                        <SelectValue placeholder={t("submit.chooseCategory")} />
+                        <SelectValue>
+                          {(value) => selectedCategory?.name || t("submit.chooseCategory")}
+                        </SelectValue>
                       </SelectTrigger>
                       <SelectContent align="start" className="w-[min(90vw,36rem)]">
                         {categories.map((cat) => (
