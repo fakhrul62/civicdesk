@@ -78,7 +78,7 @@ export function SubmitClient({
   const [navigatingTo, setNavigatingTo] = useState<"track" | "dashboard" | null>(null);
   const [error, setError] = useState("");
 
-  const [categoryId, setCategoryId] = useState("");
+  const [categoryId, setCategoryId] = useState<string | undefined>(undefined);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [address, setAddress] = useState("");
@@ -348,9 +348,7 @@ export function SubmitClient({
                     <Label htmlFor="category">{t("submit.selectCategory")} <span className="text-destructive">*</span></Label>
                     <Select value={categoryId} onValueChange={setCategoryId}>
                       <SelectTrigger id="category" className="w-full">
-                        <SelectValue>
-                          {(value) => selectedCategory?.name || t("submit.chooseCategory")}
-                        </SelectValue>
+                        <SelectValue placeholder={t("submit.chooseCategory")} />
                       </SelectTrigger>
                       <SelectContent align="start" className="w-[min(90vw,36rem)]">
                         {categories.map((cat) => (
