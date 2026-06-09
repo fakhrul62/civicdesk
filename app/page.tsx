@@ -48,7 +48,7 @@ async function getHomeData() {
       }),
       ]),
       new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error("Homepage data timeout")), 1200)
+        setTimeout(() => reject(new Error("Homepage data timeout")), 5000)
       ),
     ]);
 
